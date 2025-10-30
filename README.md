@@ -5,7 +5,8 @@ yarn add react-native-safe-area-context react-native-screens @react-navigation/n
 yarn android
 (ios면 yarn ios)
 
-- 첫 빌드는 15~20분 정도 걸림. (새로운 패키지를 설치할 때마다) 줄이는 방법을 찾는 중입니다.
+- 첫 빌드는 15~20분 정도 걸림. (새로운 패키지를 설치할 때마다)
+- 줄이는 방법을 찾는 중입니다.
 - 첫 빌드 이후의 빌드는 1분 내외
 
 
