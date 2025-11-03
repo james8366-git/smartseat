@@ -21,7 +21,6 @@ function RoomScreen({ route }) {
         <View style={styles.container}>
             <Text style={styles.title}>{roomName}</Text>
 
-            {/* 좌석 배치 */}
             <View style={styles.seatContainer}>
                 {seats.map(
                     (row, rowIndex) => 
@@ -46,7 +45,6 @@ function RoomScreen({ route }) {
                 }
             </View>
 
-            {/* 좌석 팝업 */}
             <Modal
                 transparent={true}
                 visible={modalVisible}
