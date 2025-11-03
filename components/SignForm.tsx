@@ -31,7 +31,6 @@ function SignForm({isSignUp, onSubmit, form, createChangeTextHandler}){
           returnKeyType="next"
           ref={nameRef}
           onSubmitEditing={() => student_numRef.current?.focus()}
-          maxlength = {40}
         />
       )}
 

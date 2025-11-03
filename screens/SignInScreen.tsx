@@ -19,11 +19,11 @@ function SignInScreen({navigation, route}){
             nickname : '',
             department: '',
             goals : 0,
-            isadmin : false,
             seatId : '',
             reservelog : [
                 
             ],
+            isadmin: false,
         }
     );
     const [loading, setLoading] = useState();
@@ -42,7 +42,7 @@ function SignInScreen({navigation, route}){
 
     const onSubmit = async () => {
         // Keyboard.dismiss();
-        const {name, student_number, password, confirmPassword, nickname, department, goals, seatId, isadmin} = form;
+        const {name, student_number, password, confirmPassword, nickname, department, goals, seatId, reservelog, isadmin} = form;
         const DOMAIN = 'inha.edu';
         const email = `${String(student_number).trim()}@${DOMAIN}`;
         const info = {email, password};
@@ -84,20 +84,23 @@ function SignInScreen({navigation, route}){
         }
         
 
-        if(isSignUp && (password !== confirmPassword)){
-            Alert.alert('실패', '비밀번호가 일치하지 않습니다.');
+        if(isSignUp && password !== confirmPassword){
+              if (mounted.current) {
+                 Alert.alert('실패', '비밀번호가 일치하지 않습니다.');
+                }     
             return;
         }
         setLoading(true);
 
         try{
             const profileExtra = isSignUp ? 
-            {name, student_number, nickname, department, goals, seatId, isadmin} : undefined;
+            {name, student_number, nickname, department, goals, seatId, reservelog, isadmin} : undefined;
 
             const {user} = isSignUp ? await signUp(info)
             : await signIn(info);
             
             const profile = await getUser(user.uid);
+            console.log(profileExtra);
             if(!profile && profileExtra){
                 await createUser({
                     id: user.uid,
@@ -160,6 +163,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: '#ffffff',
     },
     text: {
         fontSize: 32,

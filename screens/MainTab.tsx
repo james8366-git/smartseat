@@ -1,10 +1,14 @@
 import React from "react";
-import { Image, StyleSheet, Text, View} from "react-native";
+import { StyleSheet, View} from "react-native";
 import { useUserContext } from "../contexts/UserContext";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeStack from "./HomeStack";
 // import MyProfileStack from "./MyProfileStack";
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import ReservationStack from "./Reservation/ReservationStack";
+import RankStack from "./Rank/RankStack";
+import CalendarStack from "./Calendar/CalendarStack";
+import ProfileStack from "./Profile/ProfileStack";
 // import CameraButton from "../components/CameraButton";
 
 const Tab = createBottomTabNavigator();
@@ -39,7 +43,16 @@ function MainTab(){
                         {
                             headerShown: false,
                             tabBarShowLabel: false,
-                            tabBarActiveTintColor: '#005bac',
+                            tabBarActiveTintColor: '#000000', 
+                            tabBarInactiveTintColor: '#C0C0C0',
+                            tabBarStyle: {
+                                backgroundColor: '#FFFFFF',
+                                borderTopWidth: 0.5,
+                                borderTopColor: '#E0E0E0',
+                                height: 60,
+                                paddingBottom: 6,
+                                paddingTop: 6,
+                            },
                         }
                     }
                 >
@@ -54,6 +67,55 @@ function MainTab(){
                                 ),
                             }
                         }
+                    />
+
+                    <Tab.Screen
+                        name="ReservationStack"
+                        component={ReservationStack}
+                        options = {
+                            {
+                                tabBarIcon: ({color}) => (
+                                    <Icon name="chair-alt" size={24} color={color}/>
+                                )
+                            }
+                        }
+
+                    />
+                    <Tab.Screen
+                        name="RankStack"
+                        component={RankStack}
+                        options = {
+                            {
+                                tabBarIcon: ({color}) => (
+                                    <Icon name="bar-chart" size={24} color={color}/>
+                                )
+                            }
+                        }
+
+                    />
+                    <Tab.Screen
+                        name="CalendarStack"
+                        component={CalendarStack}
+                        options = {
+                            {
+                                tabBarIcon: ({color}) => (
+                                    <Icon name="calendar-today" size={24} color={color}/>
+                                )
+                            }
+                        }
+
+                    />
+                    <Tab.Screen
+                        name="ProfileStack"
+                        component={ProfileStack}
+                        options = {
+                            {
+                                tabBarIcon: ({color}) => (
+                                    <Icon name="account-circle" size={24} color={color}/>
+                                )
+                            }
+                        }
+
                     />
                 </Tab.Navigator>
             </View>       
