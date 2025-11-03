@@ -19,7 +19,8 @@ function SignInScreen({navigation, route}){
             nickname : '',
             department: '',
             goals : 0,
-            role: 'user',
+            isadmin : false,
+            seatId : '',
             reservelog : [
                 
             ],
