@@ -3,39 +3,17 @@ import { StyleSheet, View} from "react-native";
 import { useUserContext } from "../contexts/UserContext";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeStack from "./HomeStack";
-// import MyProfileStack from "./MyProfileStack";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import ReservationStack from "./Reservation/ReservationStack";
 import RankStack from "./Rank/RankStack";
 import CalendarStack from "./Calendar/CalendarStack";
 import ProfileStack from "./Profile/ProfileStack";
-// import CameraButton from "../components/CameraButton";
-
 const Tab = createBottomTabNavigator();
 
 function MainTab(){
     const {user} = useUserContext();
 
     return(
-        // <View style={styles.block}>
-        //     {
-        //         user.photoURL && (
-        //             <Image
-        //                 source={
-        //                     {uri: user.photoURL}
-        //                 }
-        //                 style={
-        //                     {width: 128, height: 128, marginBottom: 16}
-        //                 }
-        //                 resizeMode="cover"
-        //             />
-        //         )
-        //     }
-        //     <Text style={styles.text}>
-        //         Hello, {user.displayName}
-        //     </Text>
-        // </View>
-
         <>
             <View style={styles.block}>
                 <Tab.Navigator
