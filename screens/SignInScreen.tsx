@@ -41,26 +41,29 @@ function SignInScreen({navigation, route}){
     };
 
     const onSubmit = async () => {
-        // Keyboard.dismiss();
         const {name, student_number, password, confirmPassword, nickname, department, goals, seatId, reservelog, isadmin} = form;
         const DOMAIN = 'inha.edu';
         const email = `${String(student_number).trim()}@${DOMAIN}`;
-        const info = {email, password};
-
-        
+        const info = {email, password};       
         
         if(!name && isSignUp){
+            if(name.length < 2 || name.length > 40 ){
+                return(
+                    Alert.alert('성명은 2글자 이상 40글자 이하')
+                )
+            }
             return(
-                Alert.alert('이름을 입력하세요.')
+                Alert.alert('성명을 입력하세요.')
             )
         }
 
         if(!student_number){
+            
             return(
                 Alert.alert('학번을 입력하세요.')
             )
         }
-        if(!password){
+        if(!password && (password.length < 4 || password.length > 12) ){
             console.log(password);
             return(
                 Alert.alert('비밀번호를 입력하세요.')
@@ -72,7 +75,7 @@ function SignInScreen({navigation, route}){
                 Alert.alert('비밀번호 확인을 입력하세요.')
             )
         }
-        if(!nickname && isSignUp){
+        if(!nickname && isSignUp && nickname.length>6 ){
             return(
                 Alert.alert('닉네임을 입력하세요.')
             )
@@ -111,6 +114,7 @@ function SignInScreen({navigation, route}){
             }
 
             if(isSignUp){
+                Alert.alert('가입', '가입 성공');
                 navigation.replace('SignIn', {isSignUp: false});
                 return;
             }
@@ -119,13 +123,13 @@ function SignInScreen({navigation, route}){
             console.log(e);
             const messages = {
                 'auth/email-already-in-use': '이미 가입된 학번입니다',
-                'auth/invalid-credential' : '학번 또는 비밀번호가 올바르지 않습니다.',
+                'auth/invalid-credential' : '학번 또는 비밀번호가 틀렸습니다.',
                 'auth/user-not-found' : '존재하지 않는 계정입니다.',
             };
             // 현재 Firebase 정책상, 없는 이메일, 잘못된 비밀번호 입력 시에는 모두 auth/invalid-credential로 통일됨
             // 따로 방법을 찾아야함
             const msg = messages[e.code] || `${isSignUp ? '가입' : '로그인'} 실패`;
-            Alert.alert('실패', msg);
+            Alert.alert('로그인 실패', msg);
         }finally{
             setLoading(false);
         }
@@ -137,7 +141,8 @@ function SignInScreen({navigation, route}){
             behavior={Platform.select( {ios: 'padding'})}
         >
             <SafeAreaView style={styles.fullscreen}>
-                <Text style={styles.text}>집중의 정석</Text>
+                {isSignUp && <Text style={styles.text}>회원가입</Text>}
+                {!isSignUp && <Text style={styles.text}>로그인</Text>}
                 <View style={styles.form}>
                     <SignForm
                         isSignUp={isSignUp}

@@ -5,9 +5,9 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native
 function HomeScreen() {
 
     const [subjects, setSubjects] = useState([
-        { id: '1', name: '알고리즘', time: '00:00:00', selected: true },
+        { id: '0', name: '공부', time: '00:00:00', selected: true },
+        { id: '1', name: '알고리즘', time: '00:00:00', selected: false },
         { id: '2', name: '자료구조', time: '00:00:00', selected: false },
-        { id: '3', name: '네트워크', time: '00:00:00', selected: false },
     ]);
 
     const toggleSelect = (id) => {
@@ -25,7 +25,7 @@ function HomeScreen() {
     const addSubject = () => {
         setSubjects(prev => [
         ...prev,
-        { id: Date.now().toString(), name: '새 과목', time: '00:00:00', selected: false },
+            { id: Date.now().toString(), name: '새 과목', time: '00:00:00', selected: false },
         ]);
     };
 

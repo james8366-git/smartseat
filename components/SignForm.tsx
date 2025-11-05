@@ -23,7 +23,7 @@ function SignForm({isSignUp, onSubmit, form, createChangeTextHandler}){
       {isSignUp && (
         <BorderedInput
           hasMarginBottom
-          placeholder="성명"
+          placeholder="성명 (한글 or 영어 2~40글자)"
           value={form.name}
           onChangeText={createChangeTextHandler('name')}
           autoCapitalize="none"
@@ -36,7 +36,7 @@ function SignForm({isSignUp, onSubmit, form, createChangeTextHandler}){
 
       <BorderedInput
         hasMarginBottom
-        placeholder="학번"
+        placeholder="학번 (숫자 8개)"
         value={form.student_number}
         onChangeText={createChangeTextHandler('student_number')}
         autoCapitalize="none"
@@ -51,7 +51,7 @@ function SignForm({isSignUp, onSubmit, form, createChangeTextHandler}){
 
       <BorderedInput
         hasMarginBottom={isSignUp}
-        placeholder="비밀번호"
+        placeholder="비밀번호 (영어,숫자,특수기호 4~12글자)"
         value={form.password}
         onChangeText={createChangeTextHandler('password')}
         ref={passwordRef}
@@ -81,7 +81,7 @@ function SignForm({isSignUp, onSubmit, form, createChangeTextHandler}){
 
           <BorderedInput
             hasMarginBottom
-            placeholder="닉네임"
+            placeholder="닉네임 (한글,영어,숫자 6글자)"
             value={form.nickname}
             onChangeText={createChangeTextHandler('nickname')}
             ref={nicknameRef}
@@ -95,7 +95,7 @@ function SignForm({isSignUp, onSubmit, form, createChangeTextHandler}){
               style={styles.picker}
               dropdownIconColor="#000"
             >
-              <Picker.Item label="학과를 선택하세요" value="" enabled={false} />
+              <Picker.Item label="학과" value="" enabled={false} />
               <Picker.Item label="컴퓨터공학과" value="컴퓨터공학과" />
               <Picker.Item label="전자공학과" value="전자공학과" />
               <Picker.Item label="기계공학과" value="기계공학과" />
