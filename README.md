@@ -1,6 +1,7 @@
 Local로 받으신 다음에, 핸드폰을 컴퓨터에 연결하시고, smartseat 폴더에서 
 
-yarn add react-native-safe-area-context react-native-screens @react-navigation/native @react-navigation/native-stack @react-navigation/bottom-tabs react-native-vector-icons @react-native-picker/picker @react-native-firebase/auth @react-native-firebase/firestore @react-native-firebase/app --dev metro-react-native-babel-preset react-native-get-random-values @react-navigation/elements
+yarn add react-native-safe-area-context react-native-screens @react-navigation/native @react-navigation/native-stack @react-navigation/bottom-tabs react-native-vector-icons @react-native-picker/picker @react-native-firebase/auth @react-native-firebase/firestore @react-native-firebase/app --dev metro-react-native-babel-preset react-native-get-random-values @react-navigation/elements react-native-svg react-native-svg-transformer
+
 
 yarn android
 (ios면 yarn ios)
