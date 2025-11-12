@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import { useUserContext } from "../../contexts/UserContext"; // 닉네임 불러오기용
+import { useUserContext } from "../../contexts/UserContext";
+import { signOut } from "../../lib/auth";
 
 function SettingsScreen() {
-    const { user } = useUserContext();
+    const { user, setUser} = useUserContext();
     const [showTimerModal, setShowTimerModal] = useState(false);
     const [selectedTime, setSelectedTime] = useState("00:00");
 
-    // 00:00 ~ 2:00까지 10분 단위 생성
     const timerOptions = [];
     for (let h = 0; h <= 2; h++) {
         for (let m = 0; m < 60; m += 10) {
@@ -24,6 +24,15 @@ function SettingsScreen() {
     const selectTimer = (time) => {
         setSelectedTime(time);
         setShowTimerModal(false);
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut();
+            setUser(null);
+        } catch (error) {
+            Alert.alert("오류", "로그아웃 중 문제가 발생했습니다.");
+        }
     };
 
     return (
@@ -53,6 +62,10 @@ function SettingsScreen() {
                     <Icon name="arrow-drop-down" size={26} color="#333" />
                 </TouchableOpacity>
             </View>
+
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <Text style={styles.logoutText}>로그아웃</Text>
+            </TouchableOpacity>
 
             {/* 타이머 선택 모달 */}
             <Modal visible={showTimerModal} transparent animationType="fade">
@@ -146,6 +159,20 @@ const styles = StyleSheet.create({
         color: "#555",
     },
 
+    logoutButton: {
+        marginTop: 30,
+        backgroundColor: "#d9534f",
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 6,
+    },
+
+    logoutText: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    
     // Modal
     modalOverlay: {
         flex: 1,

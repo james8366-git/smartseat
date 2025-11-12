@@ -1,17 +1,23 @@
 import firestore from '@react-native-firebase/firestore';
 
-export const usersCollection = firestore().collection('users');
+// 기존 코드 예시
+export const getUser = async (id) => {
+  const doc = await firestore().collection('users').doc(id).get();
+  return doc.exists ? doc.data() : null;
+};
 
-export function createUser({id, profileExtra}){
-    return usersCollection.doc(id).set({
-        id,
-        ...profileExtra,
-        createdAt: firestore.FieldValue.serverTimestamp(),
-    },
-    {merge: true});
-}
+export const createUser = async ({ id, profileExtra }) => {
+  await firestore().collection('users').doc(id).set(profileExtra);
+};
 
-export async function getUser(id){
-    const doc = await usersCollection.doc(id).get();
-    return doc.data();
-}
+
+export const checkDuplicateUser = async (field, value) => {
+  const snapshot = await firestore()
+    .collection('users')
+    .where(field, '==', value)
+    .get();
+
+    console.log(snapshot);
+
+  return !snapshot.empty;
+};
