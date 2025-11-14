@@ -16,3 +16,6 @@ export function signOut(){
     return auth().signOut();
 }
 
+export function sendResetEmail(email) {
+    return auth().sendPasswordResetEmail(email);
+}

@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { signUp } from '../../lib/auth';
 import { createUser } from '../../lib/users';
 import checkSignUpError from '../../components/Sign/CheckSignUpError';
-import DuplicateCheck from '../../components/SignIn/DuplicateCheck';
+import DuplicateCheck from '../../components/Sign/DuplicateCheck';
 
 function SignUpScreen({ navigation }) {
     const [form, setForm] = useState({

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -13,12 +12,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { signIn } from '../../lib/auth';
 import { getUser } from '../../lib/users';
 import { useUserContext } from '../../contexts/UserContext';
+import PWFind from '../../components/Sign/PWFind';
 
 function SignInScreen({ navigation }) {
   const [studentNumber, setStudentNumber] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { setUser } = useUserContext();
+  const [pwModal, setPwModal] = useState(false);
+
 
   const handleLogin = async () => {
     if (!studentNumber || !password) {
@@ -49,6 +51,7 @@ function SignInScreen({ navigation }) {
   };
 
   return (
+    
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -83,7 +86,22 @@ function SignInScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
           <Text style={styles.signupLink}>회원가입</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+            onPress={() => setPwModal(true)}
+            style={{ marginTop: 16 }}
+        >
+            <Text style={{ textAlign: 'center', color: '#005bac' }}>
+                비밀번호 찾기
+            </Text>
+        </TouchableOpacity>
+    <PWFind
+        visible={pwModal}
+        onClose={() => setPwModal(false)}
+    />
       </SafeAreaView>
+
+
     </KeyboardAvoidingView>
   );
 }
