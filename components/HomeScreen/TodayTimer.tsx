@@ -1,7 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useUserContext } from '../../contexts/UserContext';
+import { getTodayTotalTime } from '../../lib/studylogs';
 
-function TodayTimer({ time = '00:00' }) {
+function TodayTimer() {
+    const { user } = useUserContext();
+    const [time, setTime] = useState("00:00");
+
+    const formatTime = (minutes: number) => {
+        const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+        const m = String(minutes % 60).padStart(2, "0");
+        return `${h}:${m}`;
+    };
+
+    useEffect(() => {
+        console.log(user);
+        if (!user?.id) return;
+
+        const load = async () => {
+            const totalMinutes = await getTodayTotalTime(user.id);
+            setTime(formatTime(totalMinutes));
+        };
+
+        load();
+    }, [user]);
+
     return (
         <View style={styles.container}>
             <View style={styles.circle}>

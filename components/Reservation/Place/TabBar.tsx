@@ -22,30 +22,34 @@ function TabBar({ selectedTab, onSelect }) {
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    height: '20%',
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'flex-start',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  tabItem: {
-    marginRight: 16,
-    paddingBottom: 6,
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#5A8DEE',
-  },
-  activeTabText: {
-    color: '#5A8DEE',
-    fontWeight: 'bold',
-  },
+    tabBar: {
+        height: '20%',
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'flex-start',
+        paddingHorizontal: 16,
+        marginBottom: 8,
+    },
+
+    tabItem: {
+        marginRight: 16,
+        paddingBottom: 6,
+    },
+
+    tabText: {
+        fontSize: 16,
+        color: '#666',
+    },
+
+    activeTab: {
+        borderBottomWidth: 2,
+        borderBottomColor: '#5A8DEE',
+    },
+    
+    activeTabText: {
+        color: '#5A8DEE',
+        fontWeight: 'bold',
+    },
 });
 
 export default TabBar;

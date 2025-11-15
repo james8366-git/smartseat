@@ -26,7 +26,7 @@ function RoomList({ selectedTab, navigation }) {
     fetchCounts();
   }, []);
 
-  const filteredRooms = rooms.filter(r => r.type === selectedTab);
+  const filteredRooms = rooms.filter(room => room.type === selectedTab);
 
   return (
     <FlatList
@@ -34,50 +34,55 @@ function RoomList({ selectedTab, navigation }) {
       numColumns={2}
       keyExtractor={(item) => item.id}
       columnWrapperStyle={{ justifyContent: 'space-around' }}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.roomButton}
-          onPress={() =>
-            navigation.navigate('Room', {
-              roomName: item.name,
-              roomId: item.id,
-            })
-          }
-        >
-          <View style={styles.circle}>
-            <Text style={styles.circleText}>{item.seats ?? 0}</Text>
-          </View>
-          <Text style={styles.roomName}>{item.name}</Text>
-        </TouchableOpacity>
-      )}
+      renderItem={
+        ({ item }) => (
+                <TouchableOpacity
+                    style={styles.roomButton}
+                    onPress={
+                        () => navigation.navigate('Room', {
+                                roomName: item.name,
+                                roomId: item.id,
+                            }
+                        )
+                    }
+                >
+                    <View style={styles.circle}>
+                        <Text style={styles.circleText}>{item.seats ?? 0}</Text>
+                    </View>
+
+                    <Text style={styles.roomName}>{item.name}</Text>
+                    
+                </TouchableOpacity>
+            )
+        }
     />
   );
 }
 
 const styles = StyleSheet.create({
-  roomButton: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  circle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 6,
-    borderColor: '#5A8DEE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  circleText: {
-    fontSize: 16,
-    color: '#555',
-  },
-  roomName: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#555',
-  },
+    roomButton: {
+        alignItems: 'center',
+        marginVertical: 20,
+    },
+    circle: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 6,
+        borderColor: '#5A8DEE',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+    },
+    circleText: {
+        fontSize: 16,
+        color: '#555',
+    },
+    roomName: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#555',
+    },
 });
 
 export default RoomList;
