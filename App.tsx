@@ -9,13 +9,16 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import RootStack from './screens/RootStack';
 import { UserContextProvider } from './contexts/UserContext';
+import { SelectedSubjectProvider } from './contexts/SelectedSubjectContext';
 
 function App(){
   return(
     <UserContextProvider>
-      <NavigationContainer>
-        <RootStack/>
-      </NavigationContainer>
+        <SelectedSubjectProvider>
+            <NavigationContainer>
+                <RootStack/>
+            </NavigationContainer>
+        </SelectedSubjectProvider>
     </UserContextProvider>
     
   ) 

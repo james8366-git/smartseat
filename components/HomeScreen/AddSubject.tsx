@@ -17,7 +17,7 @@ function AddSubject({ subjects, setSubjects }) {
     const updated = [...subjects, newItem];
 
     setSubjects(updated);
-    await updateSubjects(user.id, updated);
+    await updateSubjects(user.uid, updated);
   };
 
   return (

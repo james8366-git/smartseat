@@ -45,7 +45,7 @@ function StudyList({ subjects, setSubjects }) {
         renderItem={({ item }) => (
           <StudyItem
             item={item}
-            onSelect={() => toggleSelect(item.id)}
+            onSelect={toggleSelect}
             onEdit={() => openEditModal(item)}
             onDelete={() => deleteSubject(item.id)}
           />

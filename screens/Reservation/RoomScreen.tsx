@@ -1,27 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { getSeatsByRoom } from '../../lib/seats';
+// screens/Reservation/RoomScreen.tsx
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import SeatGrid from "../../components/Reservation/Room/SeatGrid";
+import SeatModal from "../../components/Reservation/Room/SeatModal";
+import { getSeatsByRoom } from "../../lib/seats";
 
-import SeatGrid from '../../components/Reservation/Room/SeatGrid';
-import SeatModal from '../../components/Reservation/Room/SeatModal';
-
-function RoomScreen({ route }) {
-  const { roomName, roomId } = route.params;
+function RoomScreen({ route, navigation }) {
+  const { roomId, roomName } = route.params;
 
   const [seats, setSeats] = useState([]);
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
-    const loadSeats = async () => {
-      const list = await getSeatsByRoom(roomId);
-      setSeats(list);
-    };
+    async function loadSeats() {
+      if (!roomId) return;
+
+      const seatData = await getSeatsByRoom(roomId);
+
+      const formatted = seatData.map((s) => ({
+        id: s.seatId,               // 🔥 반드시 문서 id
+        seat_number: s.seat_number,
+        status: s.status,
+        student_number: s.student_number,
+        room: s.room,
+      }));
+
+      setSeats(formatted);
+    }
+
     loadSeats();
   }, [roomId]);
 
-  const handleSeatPress = (seatNumber) => {
-    setSelectedSeat(seatNumber);
+  const handleSeatPress = (seat) => {
+    if (seat.status !== "none") return;
+    setSelectedSeat(seat);
     setModalVisible(true);
   };
 
@@ -31,13 +44,15 @@ function RoomScreen({ route }) {
 
       <SeatGrid
         seats={seats}
-        seatsPerRow={2} // 기존 2x2 형태 그대로 유지
+        seatsPerRow={6}
         onSeatPress={handleSeatPress}
       />
 
       <SeatModal
         visible={modalVisible}
-        seatNumber={selectedSeat}
+        seat={selectedSeat}
+        roomName={roomName}
+        navigation={navigation}
         onClose={() => setModalVisible(false)}
       />
     </View>
@@ -46,15 +61,15 @@ function RoomScreen({ route }) {
 
 const styles = StyleSheet.create({
   container: {
-      flex: 1,
-      backgroundColor: '#FFFFFF',
-      padding: 16,
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
   },
   title: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: '#5A8DEE',
-      marginBottom: 10,
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#5A8DEE",
+    marginBottom: 10,
   },
 });
 

@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Modal, View, Text, TextInput, TouchableOpacity, StyleSheet
+  Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Alert
 } from "react-native";
 
 function EditSubject({
@@ -16,6 +16,11 @@ function EditSubject({
   if (!editingSubject) return null;
 
   const saveEdit = async () => {
+
+    if (!newName.trim()) {
+      Alert.alert("입력 오류", "과목을 입력하세요.");
+      return;
+    }
     const updated = subjects.map((s) =>
       s.id === editingSubject.id ? { ...s, name: newName } : s
     );

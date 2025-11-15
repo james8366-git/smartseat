@@ -1,9 +1,8 @@
 // components/Home/EditSubjectModal.tsx
 import React from 'react';
-import {Modal, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 
-function EditSubjectModal({ visible, newName, setNewName, onCancel, onSave }) 
-{
+function EditSubjectModal({ visible, newName, setNewName, onCancel, onSave }) {
     return (
         <Modal
             visible={visible}
@@ -25,14 +24,14 @@ function EditSubjectModal({ visible, newName, setNewName, onCancel, onSave })
                     <View style={styles.buttonRow}>
                         <TouchableOpacity
                             style={[styles.button, { backgroundColor: '#ccc' }]}
-                            onPress={onCancel}
+                            onPress={onCancel}          // 🔥 변경 없음
                         >
                             <Text>취소</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={[styles.button, { backgroundColor: '#5A8DEE' }]}
-                            onPress={onSave}
+                            onPress={onSave}             // 🔥 EditSubject.tsx의 saveEdit() 호출됨
                         >
                             <Text style={{ color: 'white' }}>저장</Text>
                         </TouchableOpacity>
@@ -40,7 +39,7 @@ function EditSubjectModal({ visible, newName, setNewName, onCancel, onSave })
                 </View>
             </View>
         </Modal>
-  );
+    );
 }
 
 const styles = StyleSheet.create({

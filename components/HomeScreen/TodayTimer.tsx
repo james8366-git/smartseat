@@ -14,11 +14,10 @@ function TodayTimer() {
     };
 
     useEffect(() => {
-        console.log(user);
-        if (!user?.id) return;
+        if (!user?.uid) return;
 
         const load = async () => {
-            const totalMinutes = await getTodayTotalTime(user.id);
+            const totalMinutes = await getTodayTotalTime(user.uid);
             setTime(formatTime(totalMinutes));
         };
 

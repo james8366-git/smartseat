@@ -1,29 +1,56 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+// components/Reservation/Room/SeatBox.tsx
+import React from "react";
+import { TouchableOpacity, Text, StyleSheet } from "react-native";
 
-function SeatBox({ seatNumber, onPress }) {
-    return (
-        <TouchableOpacity style={styles.seat} onPress={() => onPress(seatNumber)}>
-            <Text style={styles.seatText}>{seatNumber}</Text>
-        </TouchableOpacity>
-    );
+function SeatBox({
+  seatNumber,
+  disabled,
+  onPress,
+}: {
+  seatNumber: number;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.seat,
+        disabled ? styles.seatDisabled : styles.seatAvailable,
+      ]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.6}
+    >
+      <Text style={styles.seatText}>{seatNumber}</Text>
+    </TouchableOpacity>
+  );
 }
 
 const styles = StyleSheet.create({
-    seat: {
-        width: 30,
-        height: 30,
-        backgroundColor: '#E3EBFF',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: 5,
-    },
-    
-    seatText: {
-        fontSize: 12,
-        color: '#333',
-    },
+  seat: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 5,
+  },
+
+  seatAvailable: {
+    backgroundColor: "#E3EBFF", // 파란계열
+    borderWidth: 2,
+    borderColor: "#5A8DEE",
+  },
+
+  seatDisabled: {
+    backgroundColor: "#CCCCCC", // 회색
+    borderWidth: 2,
+    borderColor: "#999999",
+  },
+
+  seatText: {
+    fontSize: 14,
+    color: "#333",
+  },
 });
 
 export default SeatBox;
