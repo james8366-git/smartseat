@@ -4,59 +4,57 @@ import { View, Text, StyleSheet } from "react-native";
 import SeatGrid from "../../components/Reservation/Room/SeatGrid";
 import SeatModal from "../../components/Reservation/Room/SeatModal";
 import { getSeatsByRoom } from "../../lib/seats";
+import firestore from '@react-native-firebase/firestore';
 
 function RoomScreen({ route, navigation }) {
-  const { roomId, roomName } = route.params;
+    const { roomId, roomName } = route.params;
 
-  const [seats, setSeats] = useState([]);
-  const [selectedSeat, setSelectedSeat] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+    const [seats, setSeats] = useState([]);
+    const [selectedSeat, setSelectedSeat] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
-  useEffect(() => {
-    async function loadSeats() {
-      if (!roomId) return;
+    useEffect(() => {
+    if (!roomId) return;
 
-      const seatData = await getSeatsByRoom(roomId);
+    const unsubscribe = firestore()
+        .collection("seats")
+        .where("room", "==", roomId)
+        .onSnapshot(snapshot => {
+        const seatList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        setSeats(seatList);
+        });
 
-      const formatted = seatData.map((s) => ({
-        id: s.seatId,               // 🔥 반드시 문서 id
-        seat_number: s.seat_number,
-        status: s.status,
-        student_number: s.student_number,
-        room: s.room,
-      }));
+    return () => unsubscribe();
+    }, [roomId]);
 
-      setSeats(formatted);
-    }
+    const handleSeatPress = (seat) => {
+        if (seat.status !== "none") return;
+        setSelectedSeat(seat);
+        setModalVisible(true);
+    };
 
-    loadSeats();
-  }, [roomId]);
+    return (
+        <View style={styles.container}>
+        <Text style={styles.title}>{roomName}</Text>
 
-  const handleSeatPress = (seat) => {
-    if (seat.status !== "none") return;
-    setSelectedSeat(seat);
-    setModalVisible(true);
-  };
+        <SeatGrid
+            seats={seats}
+            seatsPerRow={6}
+            onSeatPress={handleSeatPress}
+        />
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{roomName}</Text>
-
-      <SeatGrid
-        seats={seats}
-        seatsPerRow={6}
-        onSeatPress={handleSeatPress}
-      />
-
-      <SeatModal
-        visible={modalVisible}
-        seat={selectedSeat}
-        roomName={roomName}
-        navigation={navigation}
-        onClose={() => setModalVisible(false)}
-      />
-    </View>
-  );
+        <SeatModal
+            visible={modalVisible}
+            seat={selectedSeat}
+            roomName={roomName}
+            navigation={navigation}
+            onClose={() => setModalVisible(false)}
+        />
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({

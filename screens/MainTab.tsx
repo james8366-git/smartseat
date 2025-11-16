@@ -50,14 +50,24 @@ function MainTab(){
                     <Tab.Screen
                         name="ReservationStack"
                         component={ReservationStack}
-                        options = {
-                            {
-                                tabBarIcon: ({color}) => (
-                                    <Icon name="chair-alt" size={24} color={color}/>
-                                )
+                        options={{
+                            tabBarIcon: (
+                                { color }) => 
+                                (
+                                    <Icon name="chair-alt" size={24} color={color} />
+                                ),
                             }
                         }
-
+                        listeners={({ navigation }) => ({
+                            tabPress: (e) => {
+                            e.preventDefault();  // 기본 동작 막기
+                            navigation.navigate("ReservationStack",
+                                    {
+                                        screen: "Place",    // 🔥 ReservationStack 내 첫 화면 강제 이동
+                                    }
+                                );
+                            },
+                        })}
                     />
                     <Tab.Screen
                         name="RankStack"

@@ -59,7 +59,9 @@ function HomeScreen() {
     setSelectedSubject(current ? current.name : null);
   }, [subjects]);
 
+  console.log(user);
   return (
+    
     <View style={styles.container}>
       <TodayTimer />
 
