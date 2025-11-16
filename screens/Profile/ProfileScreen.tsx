@@ -1,58 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, DatePic } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useUserContext } from '../../contexts/UserContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Inha from '../../assets/inha.svg';
+import NowInfo from '../../components/Profile/NowInfo';
+import DailyInfo from '../../components/Profile/DailyInfo';
+import MonthInfo from '../../components/Profile/MonthInfo';
 
 function ProfileScreen({ navigation }) {
     const { user } = useUserContext();
     const [selectedTab, setSelectedTab] = useState('자리');
-
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-
-    const [targetTime, setTargetTime] = useState('00:00');
-    const [showTimePicker, setShowTimePicker] = useState(false);
-
-    const formatDate = (date) => {
-        return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
-    };
-
-    const handlePrevDay = () => {
-        setSelectedDate(prev => new Date(prev.setDate(prev.getDate() - 1)));
-    };
-
-    const handleNextDay = () => {
-        setSelectedDate(prev => new Date(prev.setDate(prev.getDate() + 1)));
-    };
-
-    const openDatePicker = () => {
-        setShowDatePicker(true);
-    };
-
-    const openTimePicker = () => {
-        setShowTimePicker(true);
-    };
-
-    const onDateChange = (event, date) => {
-        setShowDatePicker(false);
-        if (date) {
-            setSelectedDate(date);
-        }
-    };
-
-    const onTimeChange = (event, time) => {
-        setShowTimePicker(false);
-        if (time) {
-        const formatted = `${time.getHours().toString().padStart(2, '0')}:
-        ${
-            time.getMinutes()
-                .toString()
-                .padStart(2, '0')}`;
-                setTargetTime(formatted);
-        }
-    };
 
 
     const BriefContent = () => {
@@ -78,125 +36,20 @@ function ProfileScreen({ navigation }) {
         switch(selectedTab) {
             case '자리':
                 return (
-                    <View style={styles.contentList}>
-
-                        <View style={styles.contentBox}>
-                            <Text style={styles.contentTitle}>예약좌석</Text>
-                            <View style={styles.rightGroup}>
-                                <Text style={styles.contentText}>1-256</Text>
-                                <TouchableOpacity style={styles.returnButton} onPress={() => console.log('반납 클릭')}>
-                                    <Text style={styles.returnButtonText}>반납</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={styles.contentBox}>
-                            <Text style={styles.contentTitle}>예약시간</Text>
-                            <Text style={styles.contentText}>00:00 ~ 00:00</Text>
-                        </View>
-
-                        <View style={styles.contentBox}>
-                            <Text style={styles.contentTitle}>공부시작시간</Text>
-                            <Text style={styles.contentText}>00:00</Text>
-                        </View>
-
-                        <View style={styles.contentBox}>
-                            <Text style={styles.contentTitle}>공부시간</Text>
-                            <Text style={styles.contentText}>00:00</Text>
-                        </View>
-
-                        <View style={styles.contentBox}>
-                            <Text style={styles.contentTitle}>쉬는시간</Text>
-                            <Text style={styles.contentText}>00:00</Text>
-                        </View>
-                    </View>
+                    <NowInfo/>
                 );
+
             case '일별':
-            return (
-                <View style={styles.contentList}>
-                    <View style={styles.dateBar}>
-                        <TouchableOpacity onPress={handlePrevDay}>
-                            <Icon name="chevron-left" size={28} color="#333" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={openDatePicker}>
-                            <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={handleNextDay}>
-                            <Icon name="chevron-right" size={28} color="#333" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.contentBox}>
-                        <Text style={styles.contentTitle}>공부시작시간</Text>
-                        <Text style={styles.contentText}>00:00</Text>
-                    </View>
-
-                    <View style={styles.contentBox}>
-                        <Text style={styles.contentTitle}>목표 시간</Text>
-                            <View style={styles.rightGroup}>
-                                <Text style={styles.contentText}>{targetTime}</Text>
-                                <TouchableOpacity onPress={openTimePicker}>
-                                    <Icon name="arrow-drop-down" size={28} color="#333" />
-                                </TouchableOpacity>
-                            </View>
-                    </View>
-
-                    <View style={styles.contentBox}>
-                        <Text style={styles.contentTitle}>오늘공부시간</Text>
-                        <Text style={styles.contentText}>00:00</Text>
-                    </View>
-
-                    <View style={styles.contentBox}>
-                        <Text style={styles.contentTitle}>쉬는시간</Text>
-                        <Text style={styles.contentText}>00:00</Text>
-                    </View>
-
-                    <View style={styles.progressContainer}>
-                        <View style={[styles.progressFill, {width: '50%'}]} />
-                        <View style={styles.progressRemain} />
-                    </View>
-
-                    <View style={styles.progressLabel}>
-                        <Text style={styles.graphLabel}>공부시간</Text>
-                        <Text style={styles.graphLabel}>목표시간</Text>
-                    </View>
-
-                    {showDatePicker && 
-                        (
-                            <DateTimePicker
-                            value={selectedDate}
-                            mode="date"
-                            display="default"
-                            onChange={onDateChange}
-                            />
-                        )
-                    }
-
-                    {showTimePicker && 
-                        (
-                            <DateTimePicker
-                            value={new Date()}
-                            mode="time"
-                            is24Hour={true}
-                            display="default"
-                            onChange={onTimeChange}
-                            />
-                        )
-                    }
-                </View>
-            );
- 
-                case '월별':
                 return (
-                    <View style={styles.contentList}>
-                        <Text style={styles.contentText}>월별 공부 통계</Text>
-                    </View>
+                    <DailyInfo/>
                 );
+            case '월별':
+            return (
+                <MonthInfo />
+            );
 
-                default:
-                return null;
+            default:
+            return null;
         }
     }
 
@@ -217,10 +70,6 @@ function ProfileScreen({ navigation }) {
                     
                     <Text style={styles.studentNumber}>{user?.student_number}</Text>
                 </View>
-
-                {/* <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                    <Icon name="settings" size={24} color="black" />
-                </TouchableOpacity> */}
             </View>
 
             <View style={styles.tabContainer}>
@@ -367,8 +216,7 @@ const styles = StyleSheet.create({
 
     content: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: 'stretch',
     },
 
     contentList: {
@@ -452,7 +300,7 @@ const styles = StyleSheet.create({
     },
     dateBar: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#eaf0fb',
         paddingVertical: 8,
