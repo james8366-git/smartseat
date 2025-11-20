@@ -15,6 +15,8 @@ import { signUp } from '../../lib/auth';
 import { createUser } from '../../lib/users';
 import checkSignUpError from '../../components/Sign/CheckSignUpError';
 import DuplicateCheck from '../../components/Sign/DuplicateCheck';
+import { Picker } from '@react-native-picker/picker';
+
 
 function SignUpScreen({ navigation }) {
     const [form, setForm] = useState({
@@ -28,6 +30,9 @@ function SignUpScreen({ navigation }) {
         seatId: '',
         reservelog: [],
         isadmin: false,
+        TotalStudyTime: 0,
+        pomodoro: "",
+        subject : ["공부"],
     });
 
     const [duplicateValid, setDuplicateValid] = useState({
@@ -44,7 +49,7 @@ function SignUpScreen({ navigation }) {
     };
 
     const handleJoin = async () => {
-        // ✅ 전체 검증
+        // 전체 검증
         const isValid = checkSignUpError(form, duplicateValid);
         if (!isValid) return;
 
@@ -53,15 +58,25 @@ function SignUpScreen({ navigation }) {
         const email = `${String(student_number).trim()}@${DOMAIN}`;
 
         try {
-        const { user } = await signUp({ email, password });
-        await createUser({ id: user.uid, profileExtra: form });
-        Alert.alert('가입 성공', '회원가입이 완료되었습니다.');
-        navigation.replace('SignIn');
+            const { user } = await signUp({ email, password });
+
+            // 🔥 DB에 저장되는 데이터에서 불필요한 항목 제거
+            const { confirmPassword, ...cleanForm } = form;
+
+            await createUser({
+                id: user.uid,       
+                profileExtra: cleanForm,
+            });
+
+            Alert.alert('가입 성공', '회원가입이 완료되었습니다.');
+            navigation.replace('SignIn');
+
         } catch (e) {
-        console.log(e);
-        Alert.alert('오류', '회원가입 중 문제가 발생했습니다.');
+            console.log(e);
+            Alert.alert('오류', '회원가입 중 문제가 발생했습니다.');
         }
     };
+
 
     return (
         <KeyboardAvoidingView
@@ -124,12 +139,23 @@ function SignUpScreen({ navigation }) {
                 />
             </View>
 
-            <TextInput
-                style={styles.input}
-                placeholder="학과"
-                value={form.department}
-                onChangeText={(v) => handleChange('department', v)}
-            />
+            <View style={styles.pickerWrapper}>
+                <Picker
+                    selectedValue={form.department}
+                    onValueChange={(v) => handleChange("department", v)}
+                >
+                    <Picker.Item 
+                    label="학과를 선택하세요" 
+                    value=""
+                    enabled={false}     // 🔥 선택 아예 불가! (회색, 클릭 안 됨)
+                    color="#999"
+                    />
+                    <Picker.Item label="컴퓨터공학과" value="컴퓨터공학과" />
+                    <Picker.Item label="전기공학과" value="전기공학과" />
+                    <Picker.Item label="데이터사이언스학과" value="데이터사이언스학과" />
+                </Picker>
+            </View>
+
 
             <TouchableOpacity style={styles.joinButton} onPress={handleJoin}>
                 <Text style={styles.joinText}>회원가입</Text>
@@ -189,6 +215,13 @@ const styles = StyleSheet.create({
         color: '#005bac',
         textAlign: 'center',
         fontWeight: '600',
+    },
+
+    pickerWrapper: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 6,
+        marginBottom: 14,
     },
 });
 

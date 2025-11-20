@@ -1,3 +1,4 @@
+// RootStack.tsx
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -7,6 +8,7 @@ import { subscribeAuth } from '../lib/auth';
 import MainTab from './MainTab';
 import SignInScreen from './Sign/SignInScreen';
 import SignUpScreen from './Sign/SignUpScreen';
+import AdminStack from './Admin/AdminStack';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,7 +20,9 @@ function RootStack() {
     const unsubscribe = subscribeAuth(async (currentUser) => {
       if (currentUser) {
         const profile = await getUser(currentUser.uid);
-        if (profile) setUser(profile);
+        if (profile) {
+          setUser(profile);
+        }
       } else {
         setUser(null);
       }
@@ -30,14 +34,20 @@ function RootStack() {
   if (initializing) return <View />;
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={user ? 'MainTab' : 'SignIn'}>
-      {user ? (
-        <Stack.Screen name="MainTab" component={MainTab} />
-      ) : (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {!user && (
         <>
           <Stack.Screen name="SignIn" component={SignInScreen} />
           <Stack.Screen name="SignUp" component={SignUpScreen} />
         </>
+      )}
+
+      {user && user.isadmin === true && (
+        <Stack.Screen name="AdminStack" component={AdminStack} />
+      )}
+
+      {user && user.isadmin === false && (
+        <Stack.Screen name="MainTab" component={MainTab} />
       )}
     </Stack.Navigator>
   );
