@@ -4,7 +4,6 @@ admin.initializeApp();
 
 // 랭킹 / 통계
 export { dailyStats } from "./ranking/dailyStats";
-export { monthlyStats } from "./ranking/monthlyStats";
 export { studyLogUpdate } from "./ranking/studyLogUpdate";
 export { updateRankings } from "./ranking/updateRankings";
 
