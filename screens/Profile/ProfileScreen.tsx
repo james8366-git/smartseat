@@ -46,7 +46,7 @@ function ProfileScreen({ navigation }) {
                 <View style={styles.StateItem}>
                     <Text style={styles.StateBarLabel}>내 좌석</Text>
                     <Text style={styles.StateBarValue}>
-                        {convertSeatCode(user?.seatId)}
+                        {convertSeatCode(user?.seatLabel)}
                     </Text>
                 </View>
             </View>

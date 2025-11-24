@@ -62,8 +62,8 @@ function NowInfo() {
   /** 반납 기능 */
   const handleReturn = async () => {
     try {
-      const seatLabel = user.seatId;
-      const seatDocId = await findSeatDocId(seatLabel);
+      const seatId = user.seatId;
+      const seatDocId = await findSeatDocId(seatId);
 
       if (seatDocId) {
         await clearSeatStatus(seatDocId);

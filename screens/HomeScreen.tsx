@@ -64,8 +64,7 @@ function HomeScreen() {
     <View style={styles.container}>
       <TodayTimer />
 
-      {/* seatId 실시간 반영됨 */}
-      <ReturnSeat seat={user?.seatLabel ?? ''} />
+      <ReturnSeat seat={user?.seatId ?? ''} />
 
       <StudyList subjects={subjects} setSubjects={setSubjects} />
     </View>

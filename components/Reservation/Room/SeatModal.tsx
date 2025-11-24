@@ -31,7 +31,7 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
       return;
     }
 
-    if (user.seatLabel && user.seatLabel !== '') {
+    if (user.seatId && user.seatId !== '') {
       Alert.alert('이미 자리를 예약하셨습니다.');
       return;
     }
@@ -67,12 +67,12 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
           reservedEd,
           student_number: user.student_number,
           lastSeated: now,
-          seatLabel: seatLabel,
+          seatId: seat.seatId,
         });
 
         // 2) users 업데이트
         tx.update(userRef, {
-          seatLabel: seatLabel,
+          seatId: seat.seatId,
         });
 
         // 3) studylogs 생성/갱신
@@ -82,7 +82,7 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
             uid: user.uid,
             lastSeated: now,
             occupiedAt: now,
-            seatLabel: seatLabel,
+            seatId: seat.seatId,
             student_number: user.student_number,
             totalTime: 0,
             subject: [

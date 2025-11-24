@@ -1,68 +1,54 @@
-// components/HomeScreen/ReturnSeat.tsx
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert } from 'react-native';
 import { useUserContext } from '../../contexts/UserContext';
 import firestore from '@react-native-firebase/firestore';
 
-function ReturnSeat({ seat = "" }) {
+function ReturnSeat({ seat }) {
   const { user, setUser } = useUserContext();
   const [modalVisible, setModalVisible] = useState(false);
 
-  const hasSeat = !!seat;
+  const hasSeat = !!user?.seatId; // seatLabel 대신 seatId 기준으로 체크
 
-  const roomMap = {
-    "제1열람실": "11",
-    "제2-1열람실": "21",
-    "제2-2열람실": "22",
-    "제2-2열람실(대학원생전용)": "23",
+
+  const seatIdToLabel = (seatId: string) => {
+    if (!seatId) return "";
+
+    const parts = seatId.split("_");
+    if (parts.length !== 3) return seatId;
+
+    const room = parts[1];        // 1
+    const num = parts[2];         // 1
+
+    return `제${room}열람실 ${num}번`;
   };
 
-  const findSeatDocId = async (seatLabel: string) => {
-    if (!seatLabel) return null;
-
-    const parts = seatLabel.trim().split(/\s+/);
-    const roomName = parts[0];
-    const seatNum = parseInt(parts[1].replace("번", ""), 10);
-
-    const roomId = roomMap[roomName];
-    if (!roomId) return null;
-
-    const snap = await firestore()
-      .collection("seats")
-      .where("room", "==", roomId)
-      .where("seat_number", "==", seatNum)
-      .limit(1)
-      .get();
-
-    return snap.empty ? null : snap.docs[0].id;
-  };
 
   const handleReturn = async () => {
     try {
-      const seatLabel = user.seatLabel;
-      if (!seatLabel) {
+        
+      const seatId = user?.seatId;
+      if (!seatId) {
         Alert.alert("오류", "현재 예약된 좌석이 없습니다.");
         return;
       }
 
-      const seatDocId = await findSeatDocId(seatLabel);
-
-      if (seatDocId) {
-        await firestore().collection("seats").doc(seatDocId).update({
-          status: "none",
-          reservedSt: "",
-          reservedEd: "",
-          student_number: "",
-        });
-      }
-
-      await firestore().collection("users").doc(user.uid).update({
-        seatLabel: "",
+      // 🔥 seatId(문서 ID)로 seats 문서 직접 업데이트
+      await firestore().collection("seats").doc(seatId).update({
+        status: "none",
+        reservedSt: "",
+        reservedEd: "",
+        student_number: "",
       });
 
+      // 🔥 users 문서 업데이트 (seatId / seatLabel 모두 비우기)
+      await firestore().collection("users").doc(user.uid).update({
+        seatId: "",
+      });
+
+      // 🔥 UserContext 업데이트
       setUser(prev => ({
         ...prev,
-        seatLabel: "",
+        seatId: "",
       }));
 
       setModalVisible(false);
@@ -79,7 +65,7 @@ function ReturnSeat({ seat = "" }) {
     <>
       <View style={styles.container}>
         <Text style={styles.reserveText}>
-          예약좌석: {hasSeat ? seat : ""}
+            예약좌석: {hasSeat ? seatIdToLabel(user.seatId) : ""}
         </Text>
 
         <TouchableOpacity

@@ -41,7 +41,7 @@ export async function getSeatId(uid) {
     if (!doc.exists){
         return "";
     } 
-    return doc.data().seatId ?? "";
+    return doc.data().seatLabel ?? "";
 }
 
 // ✔ subjects 가져오기 (문자열 배열)
@@ -77,6 +77,6 @@ export async function clearSeat(uid) {
     .collection("users")
     .doc(uid)
     .update({
-      seatId: "",      
+      seatLabel: "",      
     });
 }

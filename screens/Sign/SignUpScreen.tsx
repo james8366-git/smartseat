@@ -61,15 +61,19 @@ function SignUpScreen({ navigation }) {
             const { user } = await signUp({ email, password });
 
             // 🔥 DB에 저장되는 데이터에서 불필요한 항목 제거
-            const { confirmPassword, ...cleanForm } = form;
+            const { password, confirmPassword,...cleanForm } = form;
 
             await createUser({
                 id: user.uid,       
                 profileExtra: cleanForm,
             });
 
-            Alert.alert('가입 성공', '회원가입이 완료되었습니다.');
-
+            Alert.alert('가입 성공', '회원가입이 완료되었습니다.', [
+                {
+                text: '확인',
+                onPress: () => navigation.replace('SignIn'),
+                },
+            ]);
         } catch (e) {
             console.log(e);
             Alert.alert('오류', '회원가입 중 문제가 발생했습니다.');
