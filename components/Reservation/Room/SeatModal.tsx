@@ -8,9 +8,10 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
+
 import { useUserContext } from '../../../contexts/UserContext';
 import { useSelectedSubject } from '../../../contexts/SelectedSubjectContext';
+import { reserveSeat } from '../../../lib/seats';
 
 function SeatModal({ visible, onClose, seat, roomName, navigation }) {
   const { user } = useUserContext();
@@ -36,75 +37,37 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
       return;
     }
 
-    const seatRef = firestore().collection('seats').doc(seat.id);
-    const userRef = firestore().collection('users').doc(user.uid);
-    const studyRef = firestore().collection('studylogs').doc(user.uid);
-
-    const now = new Date();
-    const HH = now.getHours().toString().padStart(2, "0");
-    const MM = now.getMinutes().toString().padStart(2, "0");
-    const reservedSt = `${HH}:${MM}`;
-
-    // 6시간 뒤 자동반납 시간
-    const end = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-    const HH2 = end.getHours().toString().padStart(2, "0");
-    const MM2 = end.getMinutes().toString().padStart(2, "0");
-    const reservedEd = `${HH2}:${MM2}`;
-
     try {
-      await firestore().runTransaction(async tx => {
-        const seatSnap = await tx.get(seatRef);
-        const seatData = seatSnap.data();
-
-        if (!seatSnap.exists || seatData.status !== 'none') {
-          throw new Error('이미 선점된 자리입니다.');
-        }
-
-        // 1) seats 업데이트 — 예약 상태는 empty(착석 전)
-        tx.update(seatRef, {
-          status: "empty",
-          reservedSt,
-          reservedEd,
+      // 🔥 프론트는 Firestore에 직접 접근 X → reserveSeat() 호출
+      await reserveSeat({
+        seatDocId: seat.seatId,
+        roomId: seat.room,
+        seatNumber: seat.seat_number,
+        user: {
+          uid: user.uid,
           student_number: user.student_number,
-          lastSeated: now,
-          seatId: seat.seatId,
-        });
-
-        // 2) users 업데이트
-        tx.update(userRef, {
-          seatId: seat.seatId,
-        });
-
-        // 3) studylogs 생성/갱신
-        tx.set(
-          studyRef,
-          {
-            uid: user.uid,
-            lastSeated: now,
-            occupiedAt: now,
-            seatId: seat.seatId,
-            student_number: user.student_number,
-            totalTime: 0,
-            subject: [
-              {
-                subjectName: selectedSubject,
-                studyTime: '0',
-              },
-            ],
-          },
-          { merge: true },
-        );
+          subject: user.subject ?? [],
+          selectedSubject: selectedSubject,
+        },
       });
 
-      Alert.alert('예약이 완료되었습니다.');
+      Alert.alert('예약 완료', '좌석 예약이 완료되었습니다.');
       onClose();
       navigation.navigate('HomeStack', { screen: 'Home' });
 
-    } catch (e: any) {
-      if (e.message === '이미 선점된 자리입니다.') {
+    } catch (e) {
+      console.log("Reserve ERROR:", e);
+
+      if (e.message === 'SEAT_ALREADY_RESERVED') {
         Alert.alert('오류', '이미 선점된 자리입니다.');
-      } else {
-        console.log(e);
+      } 
+      else if (e.message === 'USER_ALREADY_HAS_SEAT') {
+        Alert.alert('오류', '이미 자리를 예약하셨습니다.');
+      } 
+      else if (e.message === 'NO_SEAT') {
+        Alert.alert('오류', '해당 좌석이 존재하지 않습니다.');
+      } 
+      else {
         Alert.alert('오류', '예약 중 문제가 발생했습니다.');
       }
     }

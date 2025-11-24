@@ -80,3 +80,27 @@ export async function clearSeat(uid) {
       seatLabel: "",      
     });
 }
+
+
+// HomeScreen의 totalTime 가져오기.
+
+export const getTodayTotalTime = async (uid: string) => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+
+    const todayKey = `${yyyy}-${mm}-${dd}`; // 예: 2025-11-25
+
+    const doc = await firestore()
+        .collection("studylogs")
+        .doc(uid)
+        .collection("daily")
+        .doc(todayKey)
+        .get();
+
+    if (!doc.exists) return 0;
+
+    // Firestore 데이터 형태: { dailyTotalTime: 20, date: "2025-11-25" }
+    return doc.data()?.dailyTotalTime ?? 0;
+};

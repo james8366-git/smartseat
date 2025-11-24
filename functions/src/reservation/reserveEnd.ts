@@ -4,28 +4,36 @@ import * as admin from "firebase-admin";
 
 const db = admin.firestore();
 
-// ⏱ 예약 종료 (Cron: every 1 minute)
-export const reserveEnd = onSchedule("every 1 minutes", async (event) => {
+export const reserveEnd = onSchedule(
+    {
+        region: "asia-northeast3",
+        schedule: "every 1 minutes",
+        timeZone: "Asia/Seoul",
+    }, async () => {
+
   const now = new Date();
+
+  // KST 변환
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const current = kst.toTimeString().slice(0, 5);
+  const current = kst.toTimeString().slice(0, 5);  // "HH:MM"
 
   logger.log("현재시간(KST):", current);
 
+  // 1️⃣ reservedEd == current 인 좌석 찾기
   const seatsSnap = await db
     .collection("seats")
     .where("reservedEd", "==", current)
     .get();
 
   for (const doc of seatsSnap.docs) {
-    const seatId = doc.id;
-    const data = doc.data();
-    const seatLabel = data.seatLabel;
+    const seatId = doc.id;    // 예: "seat_1_1"
 
-    // 🔹 studylogs 업데이트
+    logger.log(`⏱ 자동 반납 처리: ${seatId}`);
+
+    // 2️⃣ studylogs 중 seatId 일치하는 가장 최근 로그 찾기
     const logsSnap = await db
       .collection("studylogs")
-      .where("seatLabel", "==", seatLabel)
+      .where("seatId", "==", seatId)
       .orderBy("occupiedAt", "desc")
       .limit(1)
       .get();
@@ -36,29 +44,31 @@ export const reserveEnd = onSchedule("every 1 minutes", async (event) => {
       });
     }
 
-    // 🔹 users seatId 제거
+    // 3️⃣ 이 좌석을 사용한 user 찾기
     const userSnap = await db
       .collection("users")
-      .where("seatLabel", "==", seatLabel)
+      .where("seatId", "==", seatId)
       .limit(1)
       .get();
 
     if (!userSnap.empty) {
-      await userSnap.docs[0].ref.update({ seatId: null });
+      await userSnap.docs[0].ref.update({
+        seatId: "",
+      });
     }
 
-    // 🔹 좌석 초기화
+    // 4️⃣ seats 문서 초기화
     await doc.ref.update({
       status: "none",
-      reserveSt: null,
-      reserveEd: null,
-      student_number: null,
+      reservedSt: "",
+      reservedEd: "",
+      student_number: "",
       occupiedAt: null,
       lastSeated: null,
       lastChecked: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    logger.log(`예약 종료 완료: seat ${seatId}`);
+    logger.log(`✔ 자동 반납 완료: ${seatId}`);
   }
 
   return;

@@ -6,6 +6,7 @@ import EditSubject from "./EditSubject";
 import useDeleteSubject from "./DeleteSubject";
 import { updateSubjects } from "../../lib/users";
 import { useUserContext } from "../../contexts/UserContext";
+import { addSubjectToStudylog } from "../../lib/studylogs";
 
 function StudyList({ subjects, setSubjects }) {
   const { user } = useUserContext();
@@ -20,7 +21,11 @@ function StudyList({ subjects, setSubjects }) {
     await updateSubjects(user.uid, updated);
   };
 
-  const toggleSelect = (id) => {
+  const toggleSelect = async (id) => {
+
+    const selected = subjects.find((s) => s.id === id);
+    const subjectName = selected?.name;   // 🔥 여기가 핵심
+    
     const updated = subjects.map((s) => ({
       ...s,
       selected: s.id === id,
@@ -28,6 +33,7 @@ function StudyList({ subjects, setSubjects }) {
 
     setSubjects(updated);
     syncToFirestore(updated);
+    await addSubjectToStudylog(user.uid, user.seatId, subjectName);
   };
 
   const openEditModal = (subject) => {

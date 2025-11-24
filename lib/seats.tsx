@@ -59,14 +59,16 @@ export async function reserveSeat({
   user: {
     uid: string;
     student_number: string;
-    subject?: string[]; // users 문서의 subject 배열
+    selectedSubject: string;
   };
 }) {
   const db = firestore();
 
   const seatRef = db.collection('seats').doc(seatDocId);
   const userRef = db.collection('users').doc(user.uid);
-  const studyRef = db.collection('studylogs').doc(user.uid);
+
+  // ⭐ auto-generated 문서 ID
+  const studyRef = db.collection('studylogs').doc();
 
   await db.runTransaction(async (tx) => {
     const [seatSnap, userSnap] = await Promise.all([
@@ -74,70 +76,57 @@ export async function reserveSeat({
       tx.get(userRef),
     ]);
 
-    if (!seatSnap.exists) {
-      throw new Error('NO_SEAT');
-    }
+    if (!seatSnap.exists) throw new Error('NO_SEAT');
 
     const seatData: any = seatSnap.data();
     const userData: any = userSnap.data();
 
-    // 1) 자리가 이미 점유/예약된 경우
-    if (seatData.status && seatData.status !== 'none') {
-      throw new Error('SEAT_ALREADY_RESERVED');
-    }
-
-    // 2) 유저가 이미 자리 가지고 있는 경우
-    if (userData?.seatId && userData.seatId !== '') {
-      throw new Error('USER_ALREADY_HAS_SEAT');
-    }
+    if (seatData.status !== 'none') throw new Error('SEAT_ALREADY_RESERVED');
+    if (userData?.seatId && userData.seatId !== '') throw new Error('USER_ALREADY_HAS_SEAT');
 
     const now = new Date();
-    const addZero = (n: number) => String(n).padStart(2, '0');
+    const z = (n: number) => String(n).padStart(2, "0");
 
-    const reservedSt = `${addZero(now.getHours())}:${addZero(
-      now.getMinutes(),
-    )}`;
-
+    const reservedSt = `${z(now.getHours())}:${z(now.getMinutes())}`;
     const end = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-    const reservedEd = `${addZero(end.getHours())}:${addZero(end.getMinutes())}`;
+    const reservedEd = `${z(end.getHours())}:${z(end.getMinutes())}`;
 
     const roomName = roomIdToName(roomId);
     const seatLabel = `${roomName}-${seatNumber}번`;
 
-    // seats/{seatId} 업데이트
     tx.update(seatRef, {
       student_number: user.student_number,
-      status: 'empty', // 예약 상태
+      status: 'empty',
       reservedSt,
       reservedEd,
-      lastSeated: firestore.FieldValue.serverTimestamp(),
+      lastSeated: now,
+      occupiedAt: now,
+      seatLabel,
     });
 
-    // users/{uid} seatId 업데이트
     tx.update(userRef, {
-      seatId: seatLabel,
+      seatId: seatDocId,
     });
 
-    // studylogs/{uid} 생성(또는 병합)
-
-    tx.set(
-      studyRef,
-      {
-        uid: user.uid,
-        lastSeated: firestore.FieldValue.serverTimestamp(),
-        occupiedAt: firestore.FieldValue.serverTimestamp(),
-        seatId: seatLabel,
-        student_number: user.student_number,
-        totalTime: 0,
-        subject: (user.subject ?? []).map((name: string) => ({
-          studyTime: '0',
-          subjectName: name,
-        })),
-      },
-      { merge: true },
-    );
+    // ⭐ 새 로그 문서를 생성
+    tx.set(studyRef, {
+      uid: user.uid,
+      seatId: seatDocId,
+      lastSeated: now,
+      occupiedAt: now,
+      student_number: user.student_number,
+      totalTime: 0,
+      createdAt: now,   // 🔥 추가 (로그 정렬용)
+      subject: [
+        {
+          subjectName: user.selectedSubject,
+          studyTime: "0",
+        },
+      ],
+    });
   });
 }
+
 
 export const clearSeatStatus = async (seatDocId: string) => {
   await firestore().collection("seats").doc(seatDocId).update({

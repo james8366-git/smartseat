@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useUserContext } from '../../contexts/UserContext';
-import firestore from '@react-native-firebase/firestore';
+import { getTodayTotalTime } from '../../lib/studylogs';
 
 function TodayTimer() {
     const { user } = useUserContext();
@@ -16,19 +16,13 @@ function TodayTimer() {
     useEffect(() => {
         if (!user?.uid) return;
 
-        // 🔥 users/{uid}에서 TotalStudyTime 값을 실시간으로 읽기
-        const unsubscribe = firestore()
-            .collection("users")
-            .doc(user.uid)
-            .onSnapshot((doc) => {
-                if (doc.exists) {
-                    const totalMinutes = doc.data()?.TotalStudyTime ?? 0;
-                    setTime(formatTime(totalMinutes));
-                }
-            });
+        const load = async () => {
+            const totalMinutes = await getTodayTotalTime(user.uid);
+            setTime(formatTime(totalMinutes));
+        };
 
-        return () => unsubscribe();
-    }, [user?.uid]);
+        load();
+    }, [user]);
 
     return (
         <View style={styles.container}>
@@ -38,6 +32,7 @@ function TodayTimer() {
         </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: { 
