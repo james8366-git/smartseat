@@ -16,6 +16,7 @@ export const createUser = async ({ id, profileExtra }) => {
     .collection('users')
     .doc(id)
     .set({
+        id,
       ...profileExtra,  
     });
 };

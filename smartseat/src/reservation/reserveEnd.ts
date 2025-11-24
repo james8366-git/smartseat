@@ -49,7 +49,7 @@ export const reserveEnd = onSchedule("every 1 minutes", async (event) => {
 
     // 🔹 좌석 초기화
     await doc.ref.update({
-      status: "none",
+      status: "none",1
       reserveSt: null,
       reserveEd: null,
       student_number: null,

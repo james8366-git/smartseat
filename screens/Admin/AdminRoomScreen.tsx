@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import firestore from "@react-native-firebase/firestore";
+import SeatGrid from "../../components/Reservation/Room/SeatGrid";
 
 function AdminRoomScreen({ route }) {
   const { roomId, roomName } = route.params;
@@ -13,36 +14,35 @@ function AdminRoomScreen({ route }) {
       .collection("seats")
       .where("room", "==", roomId)
       .onSnapshot((snap) => {
-        const list = snap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const list = snap.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .sort((a, b) => a.seat_number - b.seat_number); // 🔥 번호 순 정렬
+
         setSeats(list);
       });
 
     return () => unsub();
-  }, []);
+  }, [roomId]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{roomName}</Text>
 
-      <View style={styles.grid}>
-        {seats.map((seat) => (
-          <TouchableOpacity
-            key={seat.id}
-            style={[
-              styles.seatBox,
-              ["empty", "object"].includes(seat.status)
-                ? styles.red
-                : styles.blue,
-            ]}
-            onPress={() => setSelectedSeat(seat)}
-          >
-            <Text style={styles.seatNumber}>{seat.seat_number}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        <SeatGrid
+        seats={seats}
+        seatsPerRow={6}
+        seatColorFn={(seat) => 
+            seat.status === "empty" || seat.status === "object"
+            ? "#FF6B6B"   // 빨간색
+            : "#D9ECFF"   // 파란색
+        }
+        onSeatPress={(seat) => setSelectedSeat(seat)}
+        />
+
+
 
       {/* Modal */}
       <Modal visible={!!selectedSeat} transparent animationType="fade">
@@ -52,7 +52,6 @@ function AdminRoomScreen({ route }) {
             <Text style={styles.modalSeat}>
               {selectedSeat?.seat_number}번 좌석
             </Text>
-
             <Text style={styles.modalSeat}>
               상태: {selectedSeat?.status}
             </Text>
@@ -78,26 +77,6 @@ const styles = StyleSheet.create({
     color: "#5A8DEE",
     marginBottom: 12,
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    borderWidth: 1,
-    borderColor: "#000",
-    padding: 10,
-    height: "85%",
-  },
-  seatBox: {
-    width: 32,
-    height: 32,
-    margin: 4,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 4,
-  },
-  blue: { backgroundColor: "#D9ECFF" },
-  red: { backgroundColor: "#FF8A8A" },
-  seatNumber: { fontSize: 14, fontWeight: "600" },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

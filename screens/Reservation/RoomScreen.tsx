@@ -14,20 +14,23 @@ function RoomScreen({ route, navigation }) {
     const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
-    if (!roomId) return;
+        if (!roomId) return;
 
-    const unsubscribe = firestore()
-        .collection("seats")
-        .where("room", "==", roomId)
-        .onSnapshot(snapshot => {
-        const seatList = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-        setSeats(seatList);
-        });
+        const unsubscribe = firestore()
+            .collection("seats")
+            .where("room", "==", roomId)
+            .onSnapshot(snapshot => {
+                const seatList = snapshot.docs
+                    .map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    }))
+                    .sort((a, b) => a.seat_number - b.seat_number); // 🔥 좌석 번호 정렬
 
-    return () => unsubscribe();
+                setSeats(seatList);
+            });
+
+        return () => unsubscribe();
     }, [roomId]);
 
     const handleSeatPress = (seat) => {

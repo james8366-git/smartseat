@@ -2,20 +2,19 @@
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 
-function SeatBox({
-  seatNumber,
-  disabled,
-  onPress,
-}: {
-  seatNumber: number;
-  disabled: boolean;
-  onPress: () => void;
-}) {
+function SeatBox({ seatNumber, disabled, onPress, adminColor }) {
+  // 🔥 적용할 배경색 결정
+  const backgroundColor = adminColor
+    ? adminColor                              // 관리자 전용 색상
+    : disabled
+    ? "#CCCCCC"                                // 기존 disabled 색
+    : "#E3EBFF";                               // 기존 available 색
+
   return (
     <TouchableOpacity
       style={[
         styles.seat,
-        disabled ? styles.seatDisabled : styles.seatAvailable,
+        { backgroundColor }                    // 🔥 최종 배경색 적용
       ]}
       onPress={disabled ? undefined : onPress}
       activeOpacity={disabled ? 1 : 0.6}
@@ -35,14 +34,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
 
+  // ⚠ 기존 seatAvailable / seatDisabled는 이제 필요 없음.
+  // UI에 적용되지 않으므로 삭제해도 되고 남겨도 됨(미사용).
   seatAvailable: {
-    backgroundColor: "#E3EBFF", // 파란계열
+    backgroundColor: "#E3EBFF",
     borderWidth: 2,
     borderColor: "#5A8DEE",
   },
 
   seatDisabled: {
-    backgroundColor: "#CCCCCC", // 회색
+    backgroundColor: "#CCCCCC",
     borderWidth: 2,
     borderColor: "#999999",
   },

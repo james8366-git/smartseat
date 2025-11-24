@@ -38,8 +38,8 @@ export default function checkSignUpError(form, duplicateValid) {
     }
 
     // 비밀번호
-    if (!password || password.length < 4 || password.length > 12) {
-        Alert.alert('입력 오류', '비밀번호는 4~12자리여야 합니다.');
+    if (!password || password.length < 6 || password.length > 16) {
+        Alert.alert('입력 오류', '비밀번호는 6~16자리여야 합니다.');
         return false;
     }
 

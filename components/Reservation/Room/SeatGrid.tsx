@@ -4,23 +4,26 @@ import { View, StyleSheet } from "react-native";
 import SeatBox from "./SeatBox";
 
 interface SeatItem {
-  id: string;          // Firestore 문서 ID
-  seat_number: number; // 좌석 번호
-  status: string;      // "none" | "reserved" | "occupied"
+  id: string;
+  seat_number: number;
+  status: string;
   student_number: string;
   room: string;
+
+  // 관리자용 custom color
+  adminColor?: string;
 }
 
 interface Props {
   seats: SeatItem[];
   seatsPerRow: number;
   onSeatPress: (seat: SeatItem) => void;
+
+  // 🔥 seat의 색상을 외부(AdminRoomScreen)에서 결정하는 함수
+  seatColorFn?: (seat: SeatItem) => string;
 }
 
-function SeatGrid({ seats, seatsPerRow, onSeatPress }: Props) {
-  /**
-   * 좌석 배열을 N칸씩 나누기
-   */
+function SeatGrid({ seats, seatsPerRow, onSeatPress, seatColorFn }: Props) {
   const seatRows: SeatItem[][] = [];
   for (let i = 0; i < seats.length; i += seatsPerRow) {
     seatRows.push(seats.slice(i, i + seatsPerRow));
@@ -30,18 +33,24 @@ function SeatGrid({ seats, seatsPerRow, onSeatPress }: Props) {
     <View style={styles.seatContainer}>
       {seatRows.map((row, rowIdx) => (
         <View key={`row-${rowIdx}`} style={styles.seatRow}>
-          {row.map((seat) => (
-            <SeatBox
-              key={seat.id} // 🔥 Firestore 문서 ID를 key로 사용 (절대 중복 없음)
-              seatNumber={seat.seat_number}
-              disabled={seat.status !== "none"} // 예약된 좌석 클릭 불가
-              onPress={() => {
-                if (seat.status === "none") {
-                  onSeatPress(seat);
-                }
-              }}
-            />
-          ))}
+          {row.map((seat) => {
+            // 🔥 외부에서 색상 함수를 넘겨줬다면 적용
+            const dynamicColor = seatColorFn ? seatColorFn(seat) : undefined;
+
+            return (
+              <SeatBox
+                key={seat.id}
+                seatNumber={seat.seat_number}
+                disabled={seat.status !== "none"}
+                adminColor={dynamicColor}   // 추가된 부분
+                onPress={() => {
+                  if (seat.status === "none") {
+                    onSeatPress(seat);
+                  }
+                }}
+              />
+            );
+          })}
         </View>
       ))}
     </View>

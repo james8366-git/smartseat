@@ -85,9 +85,6 @@ function Calendar() {
                 </TouchableOpacity>
             </View>
 
-            <Text style={styles.todayText}>
-                {year}년 {month}월 {today.getDate()}일
-            </Text>
 
             <View style={styles.summaryBox}>
                 <View style={styles.summaryItem}>

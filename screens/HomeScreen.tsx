@@ -59,14 +59,13 @@ function HomeScreen() {
     setSelectedSubject(current ? current.name : null);
   }, [subjects]);
 
-  console.log(user);
   return (
     
     <View style={styles.container}>
       <TodayTimer />
 
       {/* seatId 실시간 반영됨 */}
-      <ReturnSeat seat={user?.seatId ?? ''} />
+      <ReturnSeat seat={user?.seatLabel ?? ''} />
 
       <StudyList subjects={subjects} setSubjects={setSubjects} />
     </View>

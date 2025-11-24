@@ -27,7 +27,7 @@ function SignUpScreen({ navigation }) {
         nickname: '',
         department: '',
         goals: 0,
-        seatId: '',
+        seatLabel: '',
         reservelog: [],
         isadmin: false,
         TotalStudyTime: 0,
@@ -69,7 +69,6 @@ function SignUpScreen({ navigation }) {
             });
 
             Alert.alert('가입 성공', '회원가입이 완료되었습니다.');
-            navigation.replace('SignIn');
 
         } catch (e) {
             console.log(e);
@@ -111,7 +110,7 @@ function SignUpScreen({ navigation }) {
 
             <TextInput
                 style={styles.input}
-                placeholder="비밀번호 (영어,숫자,특수기호 4~12글자)"
+                placeholder="비밀번호 (영어,숫자,특수기호 6~16글자)"
                 secureTextEntry
                 value={form.password}
                 onChangeText={(v) => handleChange('password', v)}

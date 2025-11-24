@@ -31,7 +31,7 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
       return;
     }
 
-    if (user.seatId && user.seatId !== '') {
+    if (user.seatLabel && user.seatLabel !== '') {
       Alert.alert('이미 자리를 예약하셨습니다.');
       return;
     }
@@ -40,16 +40,12 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
     const userRef = firestore().collection('users').doc(user.uid);
     const studyRef = firestore().collection('studylogs').doc(user.uid);
 
-    
-
     const now = new Date();
-
-    // "HH:MM"
     const HH = now.getHours().toString().padStart(2, "0");
     const MM = now.getMinutes().toString().padStart(2, "0");
     const reservedSt = `${HH}:${MM}`;
 
-    // 6시간 뒤
+    // 6시간 뒤 자동반납 시간
     const end = new Date(now.getTime() + 6 * 60 * 60 * 1000);
     const HH2 = end.getHours().toString().padStart(2, "0");
     const MM2 = end.getMinutes().toString().padStart(2, "0");
@@ -64,28 +60,29 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
           throw new Error('이미 선점된 자리입니다.');
         }
 
-        // 1) seats 업데이트
+        // 1) seats 업데이트 — 예약 상태는 empty(착석 전)
         tx.update(seatRef, {
-          status: 'empty',
-          reservedSt: reservedSt,
-          reservedEd: reservedEd,
+          status: "empty",
+          reservedSt,
+          reservedEd,
           student_number: user.student_number,
           lastSeated: now,
+          seatLabel: seatLabel,
         });
 
-        // 2) users의 seatId 업데이트
+        // 2) users 업데이트
         tx.update(userRef, {
-          seatId: seatLabel,
+          seatLabel: seatLabel,
         });
 
-        // 3) studylogs 생성/갱신 - 🔥 선택된 과목 하나만
+        // 3) studylogs 생성/갱신
         tx.set(
           studyRef,
           {
             uid: user.uid,
             lastSeated: now,
             occupiedAt: now,
-            seatId: seatLabel,
+            seatLabel: seatLabel,
             student_number: user.student_number,
             totalTime: 0,
             subject: [
@@ -102,6 +99,7 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
       Alert.alert('예약이 완료되었습니다.');
       onClose();
       navigation.navigate('HomeStack', { screen: 'Home' });
+
     } catch (e: any) {
       if (e.message === '이미 선점된 자리입니다.') {
         Alert.alert('오류', '이미 선점된 자리입니다.');

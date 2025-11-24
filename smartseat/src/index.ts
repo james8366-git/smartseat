@@ -8,7 +8,7 @@ admin.initializeApp();
 // export { updateRankings } from "./ranking/updateRankings";
 
 // 예약 관련
-export { reserveEnd } from "./reservation/reserveEnd";
+export {reserveEnd} from "./reservation/reserveEnd";
 // export { reserveStart } from "./reservation/reserveStart";
 
 // // 착석, 이탈 관련
