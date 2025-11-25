@@ -58,15 +58,15 @@ export const reserveEnd = onSchedule(
     }
 
     // 4️⃣ seats 문서 초기화
-    await doc.ref.update({
-      status: "none",
-      reservedSt: "",
-      reservedEd: "",
-      student_number: "",
-      occupiedAt: null,
-      lastSeated: null,
-      lastChecked: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    await doc.ref.set({
+    status: "none",
+    reservedSt: "",
+    reservedEd: "",
+    student_number: "",
+    occupiedAt: null,
+    lastSeated: null,
+    lastChecked: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
 
     logger.log(`✔ 자동 반납 완료: ${seatId}`);
   }

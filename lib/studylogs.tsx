@@ -33,3 +33,4 @@ export async function addSubjectToStudylog(uid: string, seatId: string, newSubje
     }),
   });
 }
+

@@ -1,73 +1,114 @@
-// import * as functions from "firebase-functions";
-// import * as admin from "firebase-admin";
+import { onDocumentUpdated } from "firebase-functions/v2/firestore";
+import * as logger from "firebase-functions/logger";
+import * as admin from "firebase-admin";
 
-// const db = admin.firestore();
+admin.initializeApp();
+const db = admin.firestore();
 
-// //착석, 이탈을 감지 하여 occupiedAt, lastSeated에 시간 기록, isStudying 업데이트
-// export const seatStatusChange = functions.firestore
-//     .document("seats/{seatId}")
-//     .onUpdate(async (change, context) => {
-//         const before = change.before.data();
-//         const after = change.after.data();
-//         const seatId = context.params.seatId;
+/**
+ * 좌석 상태 변화 감지 (v2)
+ * empty → occupied : 착석
+ * occupied → empty : 자리비움
+ */
+export const seatStatusChange = onDocumentUpdated(
+    {
+        document:   "seats/{seatId}",
+        region : 'asia-northeast3',
+    },  
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    const seatId = event.params.seatId;
 
-//         const now = admin.firestore.FieldValue.serverTimestamp();
+    if (!before || !after) return;
 
-//         // 착석 감지 (empty → occupied)
-//         if (before.status === "empty" && after.status === "occupied") {
+    const now = admin.firestore.Timestamp.now();
 
-//             await change.after.ref.update({
-//                 occupiedAt: now,
-//                 lastChecked: now,
-//                 isStudying: true,
-//             });
+    /* ------------------------------
+       1) 착석 감지 (empty → occupied)
+    ------------------------------ */
+    if (before.status === "empty" && after.status === "occupied") {
+      await event.data?.after.ref.update({
+        occupiedAt: now,
+        lastChecked: now,
+        isStudying: true,
+      });
 
-//             await db.collection("studylogs").add({
-//                 seatId,
-//                 student_number: after.student_number,
-//                 room: after.room,
-//                 occupiedAt: admin.firestore.FieldValue.serverTimestamp(),
-//                 subject: [],
-//                 totalTime: 0,
-//             });
+      const { student_number, reservedSt, reservedEd } = after;
 
-//             console.log(`착석 감지 seat=${seatId}`);
-//         }
+      // 기존 로그 존재 여부 확인
+      const existing = await db
+        .collection("studylogs")
+        .where("seatId", "==", seatId)
+        .where("reservedSt", "==", reservedSt)
+        .where("reservedEd", "==", reservedEd)
+        .limit(1)
+        .get();
 
-//         // 자리 비움 감지 (occupied → empty)
-//         if (before.status === "occupied" && after.status === "empty") {
+      if (existing.empty) {
+        await db.collection("studylogs").add({
+          uid: after.uid ?? "",
+          seatId,
+          student_number,
+          reservedSt,
+          reservedEd,
+          occupiedAt: now,
+          totalTime: 0,
+          createdAt: now,
+        });
+        logger.log(`📘 새 studylog 생성 seat=${seatId}`);
+      } else {
+        // 이미 있는 경우 → 시간 초기화
+        await existing.docs[0].ref.update({
+          occupiedAt: now,
+        });
+        logger.log(`📘 기존 studylog 재사용 seat=${seatId}`);
+      }
 
-//             await change.after.ref.update({
-//                 lastSeated: now,
-//                 lastChecked: now,
-//                 isStudying: false,
-//             });
+      return;
+    }
 
-//             const logsSnap = await db.collection("studylogs")
-//                 .where("seatId", "==", seatId)
-//                 .orderBy("occupiedAt", "desc")
-//                 .limit(1)
-//                 .get();
+    /* ------------------------------
+       2) 자리 비움 감지 (occupied → empty)
+    ------------------------------ */
+    if (before.status === "occupied" && after.status === "empty") {
+      await event.data?.after.ref.update({
+        lastSeated: now,
+        lastChecked: now,
+        isStudying: false,
+      });
 
-//             if (!logsSnap.empty) {
-//                 await logsSnap.docs[0].ref.update({
-//                     lastSeated: admin.firestore.FieldValue.serverTimestamp(),
-//                 });
-//             }
+      const logs = await db
+        .collection("studylogs")
+        .where("seatId", "==", seatId)
+        .orderBy("createdAt", "desc")
+        .limit(1)
+        .get();
 
-//             console.log(`자리 비움 seat=${seatId}`);
-//         }
+      if (!logs.empty) {
+        const logRef = logs.docs[0].ref;
+        const log = logs.docs[0].data();
 
-//         //물체 감지
-//         if( before.status !== object && after.status === object ) {
+        const occupiedAt = log.occupiedAt;
+        const total = log.totalTime ?? 0;
 
-//             await change.after.ref.update({
-//                 lastChecked: now,
-//                 isStudying: false,
-//             });
+        if (occupiedAt) {
+          const diff = now.toMillis() - occupiedAt.toMillis(); // ms 경과 시간
+          await logRef.update({
+            totalTime: total + diff,
+            lastSeated: now,
+          });
+          logger.log(
+            `⏱ 총 공부 시간 업데이트 seat=${seatId} / +${diff}ms / total=${
+              total + diff
+            }ms`
+          );
+        }
+      }
 
-//             console.log(`물제 감지 seat=${seatId}`);
-//         }
+      return;
+    }
 
-//         return null;
-//     });
+    return;
+  }
+);

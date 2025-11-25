@@ -14,5 +14,5 @@ export { reserveEnd } from "./reservation/reserveEnd";
 // // 착석, 이탈 관련
 // export { abnormalPressure } from "./seating/abnormalPressure";
 // export { seatIdleCheck } from "./seating/seatIdleCheck";
-// export { seatStatusChange } from "./seating/seatStatusChange";
+export { seatStatusChange } from "./seating/seatStatusChange";
 // export { syncSensorToSeat } from "./seating/syncSensorToSeat";
