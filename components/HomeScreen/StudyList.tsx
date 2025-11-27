@@ -4,9 +4,9 @@ import StudyItem from "./StudyItem";
 import AddSubject from "./AddSubject";
 import EditSubject from "./EditSubject";
 import useDeleteSubject from "./DeleteSubject";
-import { updateSubjects } from "../../lib/users";
+import { updateSubjects, updateSelectedSubject } from "../../lib/users";
 import { useUserContext } from "../../contexts/UserContext";
-import { addSubjectToStudylog } from "../../lib/studylogs";
+import functions from "@react-native-firebase/functions";
 
 function StudyList({ subjects, setSubjects }) {
   const { user } = useUserContext();
@@ -22,10 +22,14 @@ function StudyList({ subjects, setSubjects }) {
   };
 
   const toggleSelect = async (id) => {
-
     const selected = subjects.find((s) => s.id === id);
-    const subjectName = selected?.name;   // 🔥 여기가 핵심
-    
+    const subjectName = selected?.name ?? "";
+    console.log(subjectName);
+
+    // 프론트에서 user 문서 업데이트
+    await updateSelectedSubject(user.uid, subjectName);
+
+    // StudyList UI 업데이트
     const updated = subjects.map((s) => ({
       ...s,
       selected: s.id === id,
@@ -33,8 +37,18 @@ function StudyList({ subjects, setSubjects }) {
 
     setSubjects(updated);
     syncToFirestore(updated);
-    await addSubjectToStudylog(user.uid, user.seatId, subjectName);
-  };
+
+    // 🔥 Cloud Function 호출
+        if (user.seatId) {
+        await functions()
+            .httpsCallableFromUrl(
+            "https://asia-northeast3-dbtest-1c893.cloudfunctions.net/changeSubject"
+            )({
+            subjectName,
+            seatId: user.seatId,
+            });
+        }
+  }
 
   const openEditModal = (subject) => {
     if (subject.id === "0") return;
@@ -57,10 +71,7 @@ function StudyList({ subjects, setSubjects }) {
           />
         )}
         ListFooterComponent={
-          <AddSubject
-            subjects={subjects}
-            setSubjects={setSubjects}
-          />
+          <AddSubject subjects={subjects} setSubjects={setSubjects} />
         }
       />
 

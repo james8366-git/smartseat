@@ -66,8 +66,6 @@ export async function reserveSeat({
 
   const seatRef = db.collection('seats').doc(seatDocId);
   const userRef = db.collection('users').doc(user.uid);
-
-  // ⭐ auto-generated 문서 ID
   const studyRef = db.collection('studylogs').doc();
 
   await db.runTransaction(async (tx) => {
@@ -102,25 +100,28 @@ export async function reserveSeat({
       lastSeated: now,
       occupiedAt: now,
       seatLabel,
+      studylogId: studyRef.id,
     });
 
     tx.update(userRef, {
-      seatId: seatDocId,
-    });
+        seatId: seatDocId,
+        selectedSubject: user.selectedSubject ?? "",
+    } );
 
     // ⭐ 새 로그 문서를 생성
     tx.set(studyRef, {
       uid: user.uid,
       seatId: seatDocId,
-      lastSeated: now,
-      occupiedAt: now,
+      lastSeated: null,
+      occupiedAt: null,
       student_number: user.student_number,
       totalTime: 0,
       createdAt: now,   // 🔥 추가 (로그 정렬용)
+      studylogId: studyRef.id,
       subject: [
         {
           subjectName: user.selectedSubject,
-          studyTime: "0",
+          studyTime: 0,
         },
       ],
     });

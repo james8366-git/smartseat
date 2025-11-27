@@ -51,6 +51,8 @@ function HomeScreen() {
         load();
     }, [user]);
 
+    console.log(user);
+    console.log("Project ID = ", firestore().app?.options.projectId);
   /** ------------------------------
    * ③ 선택된 과목(Context에 저장)
    * ------------------------------ */

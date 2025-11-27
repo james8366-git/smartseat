@@ -1,84 +1,95 @@
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { useUserContext } from '../../contexts/UserContext';
 import firestore from "@react-native-firebase/firestore";
-import { getTodayTotalTime } from "../../lib/studylogs";
+import { useUserContext } from "../../contexts/UserContext";
 
 function TodayTimer() {
   const { user } = useUserContext();
-  const [time, setTime] = useState("00:00");
+  const [display, setDisplay] = useState("00:00");
 
-  const intervalRef = useRef(null);
   const seatUnsubRef = useRef(null);
+  const userUnsubRef = useRef(null);
+  const intervalRef = useRef(null);
 
-  const formatTime = min => {
+  const format = (min) => {
     const h = String(Math.floor(min / 60)).padStart(2, "0");
     const m = String(min % 60).padStart(2, "0");
     return `${h}:${m}`;
   };
 
-  const stopTimer = () => {
+  const stopInterval = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
   };
 
-  const startRealTimeTimer = (baseMinutes, occupiedAt) => {
-    stopTimer();
-
-    intervalRef.current = setInterval(() => {
-      const diffMin = Math.floor((Date.now() - occupiedAt.toMillis()) / 1000 / 60);
-      setTime(formatTime(baseMinutes + diffMin));
-    }, 1000);
-  };
-
-  /* ---------------------------------------
-   * user.seatId → seats 문서 실시간 구독
-   --------------------------------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
+    // 🔵 user의 TotalStudyTime 실시간 구독
     const userRef = firestore().collection("users").doc(user.uid);
+    userUnsubRef.current = userRef.onSnapshot((snap) => {
+      if (!snap.exists) return;
 
-    const unsubUser = userRef.onSnapshot(async snap => {
-      const seatId = snap.data()?.seatId;
+      const total = snap.data().TotalStudyTime ?? 0;
 
-      if (seatUnsubRef.current) {
-        seatUnsubRef.current(); // 기존 seats 구독 해제
-        seatUnsubRef.current = null;
+      // 좌석에 않앉아있으면 그냥 TotalStudyTime만 표시
+      if (!user?.seatId) {
+        stopInterval();
+        setDisplay(format(total));
       }
-
-      if (!seatId) {
-        stopTimer();
-        setTime("00:00");
-        return;
-      }
-
-      const seatRef = firestore().collection("seats").doc(seatId);
-
-      seatUnsubRef.current = seatRef.onSnapshot(async seatSnap => {
-        const seat = seatSnap.data();
-        const baseMin = await getTodayTotalTime(user.uid);
-
-        if (seat.status === "occupied" && seat.occupiedAt) {
-          startRealTimeTimer(baseMin, seat.occupiedAt);
-        } else {
-          stopTimer();
-          setTime(formatTime(baseMin));
-        }
-      });
     });
 
     return () => {
-      unsubUser();
+      if (userUnsubRef.current) userUnsubRef.current();
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user?.seatId) {
+      stopInterval();
+      return;
+    }
+
+    const seatRef = firestore().collection("seats").doc(user.seatId);
+
+    seatUnsubRef.current = seatRef.onSnapshot(async (snap) => {
+      const seat = snap.data();
+      if (!seat) return;
+
+      // 최신 user.TotalStudyTime 가져오기
+      const userSnap = await firestore()
+        .collection("users")
+        .doc(user.uid)
+        .get();
+      const base = userSnap.data().TotalStudyTime ?? 0;
+
+      if (seat.status === "occupied" && seat.occupiedAt) {
+        stopInterval();
+
+        intervalRef.current = setInterval(() => {
+          const diffMin = Math.floor(
+            (Date.now() - seat.occupiedAt.toMillis()) / 1000 / 60
+          );
+
+          // 🔥 오직 화면에서만 더해서 표시 (DB에는 쓰지 않음)
+          setDisplay(format(base + diffMin));
+        }, 1000);
+      } else {
+        stopInterval();
+        setDisplay(format(base));
+      }
+    });
+
+    return () => {
       if (seatUnsubRef.current) seatUnsubRef.current();
-      stopTimer();
+      stopInterval();
     };
   }, [user]);
 
   return (
     <View style={styles.container}>
       <View style={styles.circle}>
-        <Text style={styles.text}>{time}</Text>
+        <Text style={styles.text}>{display}</Text>
       </View>
     </View>
   );

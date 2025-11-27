@@ -2,48 +2,138 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    match/users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId && validUser();
-			allow update: if request.auth != null && request.auth.uid == userId && validUser();
-      allow delete: if request.auth != null && request.auth.uid == userId && validUser();
-      
-      function validUser(){
-      	return request.resource.data.name is string
-        	&& request.resource.data.name.size() >=2
+
+    /* --------------------------------------------
+     * USERS
+     * -------------------------------------------- */
+    match /users/{userId} {
+
+      /* ---- 유효성 검사 함수 ---- */
+      function validUser() {
+        return request.resource.data.name is string
+          && request.resource.data.name.size() >= 2
           && request.resource.data.name.size() <= 40
-        	&& request.resource.data.nickname is string
-        	&& request.resource.data.nickname.size() >= 1
-        	&& request.resource.data.nickname.size() <= 8
+
+          && request.resource.data.nickname is string
+          && request.resource.data.nickname.size() >= 1
+          && request.resource.data.nickname.size() <= 8
+
           && request.resource.data.department is string
           && request.resource.data.goals is int
           && request.resource.data.isadmin is bool
       }
+
+      /* ---- seatId만 수정하는 update ---- */
+      function isSeatIdOnlyUpdate() {
+        let diff = request.resource.data.diff(resource.data);
+
+        return (
+          diff.changedKeys().hasOnly(["seatId"])
+          && diff.addedKeys().hasOnly([])
+          && diff.removedKeys().hasOnly([])
+        )
+        ||
+        (
+          diff.changedKeys().hasOnly([])
+          && diff.addedKeys().hasOnly(["seatId"])
+          && diff.removedKeys().hasOnly([])
+        );
+      }
+
+      /* ---- READ RULES ---- */
+
+      // 🔵 1) 중복확인용: users 컬렉션 "list" 허용
+      //     → .where("nickname", "==", "...") 허용
+      allow list: if true;
+
+      // 🔵 2) 문서 내용을 읽는 것은 본인만
+      allow get: if request.auth != null
+        && request.auth.uid == userId;
+
+
+      /* ---- WRITE RULES ---- */
+
+      // 🔥 회원가입(create)
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+
+      // 🔥 update: seatId만 수정 OR 유효한 전체 업데이트
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && (validUser() || isSeatIdOnlyUpdate());
+
+      // 🔥 delete
+      allow delete: if request.auth != null
+        && request.auth.uid == userId
+        && validUser();
     }
-    
+
+
+    /* --------------------------------------------
+     * STUDYLOGS
+     * -------------------------------------------- */
     match /studylogs/{logId} {
-      allow read: if request.auth != null 
-        && (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.uid
+            || request.auth.token.admin == true);
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.uid;
+
       allow update, delete: if false;
     }
 
+
+    /* --------------------------------------------
+     * STATS
+     * -------------------------------------------- */
     match /stats/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.admin == true);
-      allow write: if request.auth.token.admin == true; 
+
+      allow read: if request.auth != null
+        && (request.auth.uid == userId
+            || request.auth.token.admin == true);
+
+      allow write: if request.auth.token.admin == true;
     }
 
+
+    /* --------------------------------------------
+     * GROUPS
+     * -------------------------------------------- */
     match /groups/{groupId} {
+
       allow read: if request.auth != null;
-      allow write: if request.auth != null 
-        && request.auth.uid in request.resource.data.members; 
+
+      allow write: if request.auth != null
+        && request.auth.uid in request.resource.data.members;
     }
 
+
+    /* --------------------------------------------
+     * NOTIFICATIONS
+     * -------------------------------------------- */
     match /notifications/{notifId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      allow read: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+
       allow create: if request.auth.token.admin == true;
+
       allow update, delete: if false;
+    }
+
+
+    /* --------------------------------------------
+     * SEATS
+     * -------------------------------------------- */
+    match /seats/{seatId} {
+
+      allow read: if request.auth != null;
+
+      allow update: if request.auth != null;
+
+      allow create, delete: if false;
     }
   }
 }

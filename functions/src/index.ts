@@ -1,4 +1,7 @@
 import * as admin from "firebase-admin";
+
+process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION = "asia-northeast3";
+
 admin.initializeApp();
 
 // 랭킹 / 통계
@@ -15,4 +18,6 @@ export { reserveEnd } from "./reservation/reserveEnd";
 // export { abnormalPressure } from "./seating/abnormalPressure";
 // export { seatIdleCheck } from "./seating/seatIdleCheck";
 export { seatStatusChange } from "./seating/seatStatusChange";
+export {studyTimer} from "./studyTimer";
+export {changeSubject} from "./changeSubject";
 // export { syncSensorToSeat } from "./seating/syncSensorToSeat";

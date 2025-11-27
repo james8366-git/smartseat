@@ -72,6 +72,15 @@ export async function updateSubjects(uid, subjects) {
   });
 }
 
+export async function updateSelectedSubject(uid: string, subjectName: string) {
+  await firestore()
+    .collection("users")
+    .doc(uid)
+    .update({
+      selectedSubject: subjectName,
+    });
+}
+
 export async function clearSeat(uid) {
   await firestore()
     .collection("users")
