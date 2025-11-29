@@ -4,74 +4,68 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 const db = admin.firestore();
 
-export const studyTimer = onSchedule(  {
+export const studyTimer = onSchedule(
+  {
     region: "asia-northeast3",
-    schedule: "* * * * *",
-  }, async () => {
-  const seatsSnap = await db
-    .collection("seats")
-    .where("status", "==", "occupied")
-    .get();
+    schedule: "* * * * *", // every minute
+  },
+  async () => {
+    const now = admin.firestore.Timestamp.now();
 
-  const batch = db.batch();
-  const now = admin.firestore.Timestamp.now();
+    const seatsSnap = await db
+      .collection("seats")
+      .where("status", "==", "occupied")
+      .get();
 
-  for (const seatDoc of seatsSnap.docs) {
-    const seat = seatDoc.data() as any;
-    const seatRef = seatDoc.ref;
+    const batch = db.batch();
 
-    const studylogId = seat.studylogId;
-    if (!studylogId) continue;
+    for (const seatDoc of seatsSnap.docs) {
+      const seat = seatDoc.data() as any;
+      const seatRef = seatDoc.ref;
 
-    const studylogRef = db.collection("studylogs").doc(studylogId);
-    const studylogSnap = await studylogRef.get();
+      const studylogId = seat.studylogId;
+      if (!studylogId) continue;
 
-    if (!studylogSnap.exists) continue;
+      const studylogRef = db.collection("studylogs").doc(studylogId);
+      const studylogSnap = await studylogRef.get();
+      if (!studylogSnap.exists) continue;
 
-    const studylog = studylogSnap.data() as {
-      totalTime?: number;
-      uid?: string;
-      subject?: { subjectName: string; studyTime: number | string }[];
-    };
+      const studylog = studylogSnap.data() as any;
+      const uid = studylog.uid;
+      if (!uid) continue;
 
-    if (!studylog) continue;
-    if (!studylog.uid) continue;
+      // 🔥 사용자 정보
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await userRef.get();
+      if (!userSnap.exists) continue;
 
-    // ---- 1) totalTime 갱신 ----
-    const newTotal = (studylog.totalTime ?? 0) + 1;
-    batch.update(studylogRef, { totalTime: newTotal });
+      const user = userSnap.data() as any;
+      if (!user?.subject) continue;
 
-    // ---- 2) seat.totalTime 갱신 ----
-    batch.update(seatRef, {
-      totalTime: (seat.totalTime ?? 0) + 1,
-      lastChecked: now,
-    });
+      // 🔥 현재 선택된 과목 ID 찾기
+      const selectedId = Object.keys(user.subject).find(
+        (key) => user.subject[key].selected === true
+      );
+      if (!selectedId) continue;
 
-    // ---- 3) user.TotalStudyTime += 1 ----
-    const userRef = db.collection("users").doc(studylog.uid);
-    batch.update(userRef, {
-      TotalStudyTime: admin.firestore.FieldValue.increment(1),
-    });
+      const fieldForSubject = `subject.${selectedId}.time`;
 
-    // ---- 4) 과목별 studyTime 갱신 ----
-    const subjects = studylog.subject ?? [];
-
-    if (subjects.length > 0) {
-      const selectedSubject = subjects[0].subjectName;
-
-      const updatedSubjects = subjects.map((s) => {
-        if (s.subjectName === selectedSubject) {
-          return {
-            ...s,
-            studyTime: Number(s.studyTime ?? 0) + 1,
-          };
-        }
-        return s;
+      // 🔵 batch 업데이트
+      batch.update(studylogRef, {
+        totalTime: admin.firestore.FieldValue.increment(1),
       });
 
-      batch.update(studylogRef, { subject: updatedSubjects });
-    }
-  }
+      batch.update(seatRef, {
+        totalTime: admin.firestore.FieldValue.increment(1),
+        lastChecked: now,
+      });
 
-  await batch.commit();
-});
+      batch.update(userRef, {
+        TotalStudyTime: admin.firestore.FieldValue.increment(1),
+        [fieldForSubject]: admin.firestore.FieldValue.increment(1),
+      });
+    }
+
+    await batch.commit();
+  }
+);

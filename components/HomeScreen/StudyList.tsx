@@ -4,57 +4,49 @@ import StudyItem from "./StudyItem";
 import AddSubject from "./AddSubject";
 import EditSubject from "./EditSubject";
 import useDeleteSubject from "./DeleteSubject";
-import { updateSubjects, updateSelectedSubject } from "../../lib/users";
+import { updateSubjects } from "../../lib/users";
+import firestore from "@react-native-firebase/firestore";
 import { useUserContext } from "../../contexts/UserContext";
-import functions from "@react-native-firebase/functions";
+import { useStudyTimer } from "../../components/HomeScreen/useStudyTimer";
 
 function StudyList({ subjects, setSubjects }) {
   const { user } = useUserContext();
 
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
   const [newName, setNewName] = useState("");
 
   const { deleteSubject } = useDeleteSubject(subjects, setSubjects);
 
-  const syncToFirestore = async (updated) => {
-    await updateSubjects(user.uid, updated);
-  };
+  // 🔥 선택된 과목 ID
+  const selected = subjects.find((s) => s.selected);
+  const selectedId = selected?.id ?? null;
 
+  // 🔥 UI 타이머 (1초 단위 증가)
+  const uiTime = useStudyTimer(selectedId, subjects);
+
+  // 🔵 과목 선택
   const toggleSelect = async (id) => {
-    const selected = subjects.find((s) => s.id === id);
-    const subjectName = selected?.name ?? "";
-    console.log(subjectName);
-
-    // 프론트에서 user 문서 업데이트
-    await updateSelectedSubject(user.uid, subjectName);
-
-    // StudyList UI 업데이트
     const updated = subjects.map((s) => ({
       ...s,
       selected: s.id === id,
     }));
 
     setSubjects(updated);
-    syncToFirestore(updated);
+    await updateSubjects(user.uid, updated);
 
-    // 🔥 Cloud Function 호출
-        if (user.seatId) {
-        await functions()
-            .httpsCallableFromUrl(
-            "https://asia-northeast3-dbtest-1c893.cloudfunctions.net/changeSubject"
-            )({
-            subjectName,
-            seatId: user.seatId,
-            });
-        }
-  }
+    // 🔥 Firestore 반영
+    const selected = updated.find((s) => s.selected);
+    await firestore().collection("users").doc(user.uid).update({
+      selectedSubject: selected?.name ?? "",
+    });
+  };
 
-  const openEditModal = (subject) => {
-    if (subject.id === "0") return;
-    setEditingSubject(subject);
-    setNewName(subject.name);
-    setEditModalVisible(true);
+  const openEdit = (sub) => {
+    if (sub.id === "0") return;
+    setEditingSubject(sub);
+    setNewName(sub.name);
+    setEditVisible(true);
   };
 
   return (
@@ -65,8 +57,10 @@ function StudyList({ subjects, setSubjects }) {
         renderItem={({ item }) => (
           <StudyItem
             item={item}
+            selectedId={selectedId}
+            uiTime={uiTime}
             onSelect={toggleSelect}
-            onEdit={() => openEditModal(item)}
+            onEdit={() => openEdit(item)}
             onDelete={() => deleteSubject(item.id)}
           />
         )}
@@ -76,14 +70,16 @@ function StudyList({ subjects, setSubjects }) {
       />
 
       <EditSubject
-        visible={editModalVisible}
-        setVisible={setEditModalVisible}
+        visible={editVisible}
+        setVisible={setEditVisible}
         editingSubject={editingSubject}
         newName={newName}
         setNewName={setNewName}
         subjects={subjects}
         setSubjects={setSubjects}
-        syncToFirestore={syncToFirestore}
+        syncToFirestore={async (updated) =>
+          await updateSubjects(user.uid, updated)
+        }
       />
     </>
   );

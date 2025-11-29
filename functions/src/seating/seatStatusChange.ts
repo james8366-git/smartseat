@@ -1,50 +1,53 @@
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
-import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
+import * as logger from "firebase-functions/logger";
 
 admin.initializeApp();
 const db = admin.firestore();
 
-/**
- * 좌석 상태 변화 감지 (v2)
- * empty → occupied : 착석
- * occupied → empty : 자리비움
- */
 export const seatStatusChange = onDocumentUpdated(
   {
     document: "seats/{seatId}",
     region: "asia-northeast3",
   },
   async (event) => {
-    const before = event.data?.before.data() as any;
-    const after  = event.data?.after.data() as any;
-    const seatId = event.params.seatId;
+    const beforeSnap = event.data?.before;
+    const afterSnap = event.data?.after;
 
-    if (!before || !after) return;
+    // 🔥 안전 장치: snapshot 둘 다 있어야 함
+    if (!beforeSnap || !afterSnap) return;
+
+    const before = beforeSnap.data() as any;
+    const after = afterSnap.data() as any;
+
+    // 🔥 seatRef 반드시 존재하도록 보장
+    const seatRef = afterSnap.ref;
+    if (!seatRef) return;
 
     const now = admin.firestore.Timestamp.now();
 
-    // ⭐ 모든 로직은 studylogId를 기준으로 동작
+    const uid = after.uid as string | undefined;
     const studylogId = after.studylogId as string | undefined;
-    if (!studylogId) {
-      logger.warn(`seat=${seatId} 에 studylogId 없음. 로그 업데이트 생략.`);
-      return;
-    }
 
+    // uid 및 studylogId 없으면 처리 불가
+    if (!uid || !studylogId) return;
+
+    const userRef = db.collection("users").doc(uid);
     const studylogRef = db.collection("studylogs").doc(studylogId);
+    const seatId = event.params.seatId;
 
-    /* ------------------------------
-       1) 착석 감지 (empty → occupied)
-    ------------------------------ */
+    /*  
+     * ===========================================================
+     * 1) 착석 이벤트: "empty" → "occupied"
+     * ===========================================================
+     */
     if (before.status === "empty" && after.status === "occupied") {
-      // 좌석 문서 상태 업데이트
-      await event.data?.after.ref.update({
+      await seatRef.update({
         occupiedAt: now,
         lastChecked: now,
         isStudying: true,
       });
 
-      // studylog 업데이트 (착석 시간 기록 / 재착석이면 덮어쓰기)
       await studylogRef.set(
         {
           seatId,
@@ -54,54 +57,65 @@ export const seatStatusChange = onDocumentUpdated(
         { merge: true }
       );
 
-      logger.log(`📘 착석 처리 seat=${seatId}, studylogId=${studylogId}`);
       return;
     }
 
-    /* ------------------------------
-       2) 자리 비움 감지 (occupied → empty)
-    ------------------------------ */
+    /*  
+     * ===========================================================
+     * 2) 자리비움 이벤트: "occupied" → "empty"
+     * ===========================================================
+     */
     if (before.status === "occupied" && after.status === "empty") {
-      // 좌석 문서 상태 업데이트
-      await event.data?.after.ref.update({
-        lastSeated: now,
+      await seatRef.update({
         lastChecked: now,
         isStudying: false,
       });
 
-      // studylog 가져오기
+      // studylog 데이터 가져오기
       const logSnap = await studylogRef.get();
-      if (!logSnap.exists) {
-        logger.warn(
-          `자리비움 이벤트지만 studylog 없음 seat=${seatId}, studylogId=${studylogId}`
-        );
-        return;
-      }
+      if (!logSnap.exists) return;
 
       const log = logSnap.data() as any;
       const occupiedAt = log.occupiedAt as admin.firestore.Timestamp | undefined;
-      const total = (log.totalTime as number | undefined) ?? 0;
+      if (!occupiedAt) return;
 
-      if (occupiedAt) {
-        const diff = now.toMillis() - occupiedAt.toMillis(); // ms 경과 시간
+      // 🔥 지난 시간 계산 (초 단위)
+      const diffSec = Math.floor(
+        (now.toMillis() - occupiedAt.toMillis()) / 1000
+      );
 
-        await studylogRef.update({
-          totalTime: total + diff,
-          lastSeated: now,
-        });
+      // 🔥 사용자 정보 가져오기
+      const userSnap = await userRef.get();
+      if (!userSnap.exists) return;
 
-        logger.log(
-          `⏱ 총 공부 시간 업데이트 seat=${seatId}, studylogId=${studylogId} / +${diff}ms / total=${total + diff}ms`
-        );
-      } else {
-        logger.warn(
-          `occupiedAt 없음 → 시간 계산 불가 seat=${seatId}, studylogId=${studylogId}`
-        );
+      const userData = userSnap.data() as any;
+      if (!userData?.subject) return;
+
+      // 🔥 현재 선택된 과목 찾기 (users.subject 구조 기반)
+      const selectedId = Object.keys(userData.subject).find(
+        (key) => userData.subject[key].selected === true
+      );
+
+      if (!selectedId) {
+        logger.warn(`⚠ 선택된 과목 없음 uid=${uid}`);
+        return;
       }
+
+      const subjectField = `subject.${selectedId}.time`;
+
+      // 🔥 사용자 total + 과목 time + studylog.totalTime 모두 증가
+      await Promise.all([
+        userRef.update({
+          TotalStudyTime: admin.firestore.FieldValue.increment(diffSec),
+          [subjectField]: admin.firestore.FieldValue.increment(diffSec),
+        }),
+        studylogRef.update({
+          totalTime: admin.firestore.FieldValue.increment(diffSec),
+          lastSeated: now,
+        }),
+      ]);
 
       return;
     }
-
-    return;
   }
 );

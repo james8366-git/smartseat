@@ -1,115 +1,80 @@
 import firestore from '@react-native-firebase/firestore';
 
-// 기존 코드 예시
-export const getUser = async (id) => {
-  const doc = await firestore().collection('users').doc(id).get();
-  if (!doc.exists) return null;
-
-  return {
-    uid: doc.id,
-    ...doc.data(),
-  };
-};
-
-export const createUser = async ({ id, profileExtra }) => {
-  await firestore()
-    .collection('users')
-    .doc(id)
-    .set({
-        id,
-      ...profileExtra,  
-    });
-};
-
-
-
-export const checkDuplicateUser = async (field, value) => {
-  const snapshot = await firestore()
-    .collection('users')
-    .where(field, '==', value)
-    .get();
-
-    console.log(snapshot);
-
-  return !snapshot.empty;
-};
-
 const usersCollection = firestore().collection("users");
 
-export async function getSeatId(uid) {
-    const doc = await firestore().collection("users").doc(uid).get();
-    if (!doc.exists){
-        return "";
-    } 
-    return doc.data().seatLabel ?? "";
-}
+// 유저 전체 로드
+export const getUser = async (uid) => {
+  const doc = await usersCollection.doc(uid).get();
+  if (!doc.exists) return null;
+  return { uid: doc.id, ...doc.data() };
+};
 
-// ✔ subjects 가져오기 (문자열 배열)
+// 신규 유저 생성
+export const createUser = async ({ id, profileExtra }) => {
+  await usersCollection.doc(id).set({
+    id,
+    subject: {},  // MAP 구조
+    ...profileExtra,
+  });
+};
+
+// subjects 불러오기 (Map → Array)
 export async function getSubjects(uid) {
   const doc = await usersCollection.doc(uid).get();
   if (!doc.exists) return [];
 
   const data = doc.data();
+  if (!data.subject) return [];
 
-  if (!Array.isArray(data.subject)) return [];
+  const subjectMap = data.subject;
 
-
-  return data.subject.map((name, index) => ({
-    id: index.toString(),     
-    name,                     
-    time: "00:00:00",         
-    selected: index === 0,    
-  }));
+    return Object.keys(subjectMap).map((key) => ({
+    id: key,
+    name: subjectMap[key].name,
+    selected: subjectMap[key].selected,
+    time: subjectMap[key].time ?? 0,    // 🔥 time 포함
+    }));
 }
 
-// ✔ subjects 업데이트
-export async function updateSubjects(uid, subjects) {
+// subjects 저장하기 (Array → Map)
+export async function updateSubjects(uid, arr) {
+  const map = {};
+  arr.forEach((s) => {
+    map[s.id] = { 
+      name: s.name, 
+      selected: s.selected,
+      time: s.time ?? 0,        // 🔥 time 저장
+    };
+  });
 
-  const firestoreFormat = subjects.map((s) => s.name);
+  await firestore().collection("users").doc(uid).update({ subject: map });
+}
 
+
+// 좌석 해제 용도
+export async function clearSeat(uid) {
   await usersCollection.doc(uid).update({
-    subject: firestoreFormat,
+    seatLabel: "",
   });
 }
 
-export async function updateSelectedSubject(uid: string, subjectName: string) {
-  await firestore()
-    .collection("users")
+// 오늘 전체 공부 시간 가져오기
+export const getTodayTotalTime = async (uid) => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+
+  const todayKey = `${yyyy}-${mm}-${dd}`;
+
+  const doc = await firestore()
+    .collection("studylogs")
     .doc(uid)
-    .update({
-      selectedSubject: subjectName,
-    });
-}
+    .collection("daily")
+    .doc(todayKey)
+    .get();
 
-export async function clearSeat(uid) {
-  await firestore()
-    .collection("users")
-    .doc(uid)
-    .update({
-      seatLabel: "",      
-    });
-}
+  if (!doc.exists) return 0;
 
-
-// HomeScreen의 totalTime 가져오기.
-
-export const getTodayTotalTime = async (uid: string) => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-
-    const todayKey = `${yyyy}-${mm}-${dd}`; // 예: 2025-11-25
-
-    const doc = await firestore()
-        .collection("studylogs")
-        .doc(uid)
-        .collection("daily")
-        .doc(todayKey)
-        .get();
-
-    if (!doc.exists) return 0;
-
-    // Firestore 데이터 형태: { dailyTotalTime: 20, date: "2025-11-25" }
-    return doc.data()?.dailyTotalTime ?? 0;
+  return doc.data()?.dailyTotalTime ?? 0;
 };

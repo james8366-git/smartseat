@@ -7,34 +7,26 @@ function TodayTimer() {
   const { user } = useUserContext();
   const [display, setDisplay] = useState("00:00");
 
-  const seatUnsubRef = useRef(null);
   const userUnsubRef = useRef(null);
-  const intervalRef = useRef(null);
+  const seatUnsubRef = useRef(null);
 
-  const format = (min) => {
+  const format = (min: number) => {
     const h = String(Math.floor(min / 60)).padStart(2, "0");
     const m = String(min % 60).padStart(2, "0");
     return `${h}:${m}`;
   };
 
-  const stopInterval = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  };
-
+  // users/{uid}.TotalStudyTime 실시간 구독
   useEffect(() => {
     if (!user?.uid) return;
 
-    // 🔵 user의 TotalStudyTime 실시간 구독
-    const userRef = firestore().collection("users").doc(user.uid);
-    userUnsubRef.current = userRef.onSnapshot((snap) => {
-      if (!snap.exists) return;
+    const ref = firestore().collection("users").doc(user.uid);
 
+    userUnsubRef.current = ref.onSnapshot((snap) => {
+      if (!snap.exists) return;
       const total = snap.data().TotalStudyTime ?? 0;
 
-      // 좌석에 않앉아있으면 그냥 TotalStudyTime만 표시
-      if (!user?.seatId) {
-        stopInterval();
+      if (!user.seatId) {
         setDisplay(format(total));
       }
     });
@@ -44,45 +36,24 @@ function TodayTimer() {
     };
   }, [user]);
 
+  // 좌석 변화 → 최신 TotalStudyTime만 표시
   useEffect(() => {
-    if (!user?.seatId) {
-      stopInterval();
-      return;
-    }
+    if (!user?.seatId) return;
 
     const seatRef = firestore().collection("seats").doc(user.seatId);
 
-    seatUnsubRef.current = seatRef.onSnapshot(async (snap) => {
-      const seat = snap.data();
-      if (!seat) return;
-
-      // 최신 user.TotalStudyTime 가져오기
-      const userSnap = await firestore()
+    seatUnsubRef.current = seatRef.onSnapshot(async () => {
+      const snap = await firestore()
         .collection("users")
         .doc(user.uid)
         .get();
-      const base = userSnap.data().TotalStudyTime ?? 0;
 
-      if (seat.status === "occupied" && seat.occupiedAt) {
-        stopInterval();
-
-        intervalRef.current = setInterval(() => {
-          const diffMin = Math.floor(
-            (Date.now() - seat.occupiedAt.toMillis()) / 1000 / 60
-          );
-
-          // 🔥 오직 화면에서만 더해서 표시 (DB에는 쓰지 않음)
-          setDisplay(format(base + diffMin));
-        }, 1000);
-      } else {
-        stopInterval();
-        setDisplay(format(base));
-      }
+      const total = snap.data()?.TotalStudyTime ?? 0;
+      setDisplay(format(total));
     });
 
     return () => {
       if (seatUnsubRef.current) seatUnsubRef.current();
-      stopInterval();
     };
   }, [user]);
 

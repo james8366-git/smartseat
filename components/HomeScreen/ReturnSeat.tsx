@@ -38,6 +38,7 @@ function ReturnSeat({ seat }) {
         reservedSt: "",
         reservedEd: "",
         student_number: "",
+        isStudying: false,
       });
 
       // 🔥 users 문서 업데이트 (seatId / seatLabel 모두 비우기)

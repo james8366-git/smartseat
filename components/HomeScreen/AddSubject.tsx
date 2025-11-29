@@ -2,16 +2,19 @@ import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import { updateSubjects } from "../../lib/users";
 import { useUserContext } from "../../contexts/UserContext";
+import { v4 as uuidv4 } from "uuid";
 
 function AddSubject({ subjects, setSubjects }) {
   const { user } = useUserContext();
 
   const add = async () => {
+    const newId = uuidv4();
+
     const newItem = {
-      id: subjects.length.toString(),  // index 기반
+      id: newId,
       name: "새 과목",
-      time: "00:00:00",
       selected: false,
+      time: 0,
     };
 
     const updated = [...subjects, newItem];

@@ -15,19 +15,32 @@ function EditSubject({
 }) {
   if (!editingSubject) return null;
 
-  const saveEdit = async () => {
+const saveEdit = async () => {
+  if (!newName.trim()) {
+    Alert.alert("입력 오류", "과목을 입력하세요.");
+    return;
+  }
 
-    if (!newName.trim()) {
-      Alert.alert("입력 오류", "과목을 입력하세요.");
-      return;
-    }
-    const updated = subjects.map((s) =>
-      s.id === editingSubject.id ? { ...s, name: newName } : s
-    );
+  const updated = subjects.map((s) =>
+    s.id === editingSubject.id ? { ...s, name: newName } : s
+  );
 
-    setSubjects(updated);
-    await syncToFirestore(updated);
-    setVisible(false);
+  setSubjects(updated);
+  await syncToFirestore(updated);
+
+  // 🔥 선택된 과목이라면 Firestore selectedSubject도 갱신
+  if (editingSubject.selected) {
+    await firestore()
+      .collection("users")
+      .doc(user.uid)
+      .update({
+        selectedSubject: newName,
+      });
+  }
+
+  setVisible(false);
+};
+
   };
 
   return (

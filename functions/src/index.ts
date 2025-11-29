@@ -19,5 +19,4 @@ export { reserveEnd } from "./reservation/reserveEnd";
 // export { seatIdleCheck } from "./seating/seatIdleCheck";
 export { seatStatusChange } from "./seating/seatStatusChange";
 export {studyTimer} from "./studyTimer";
-export {changeSubject} from "./changeSubject";
 // export { syncSensorToSeat } from "./seating/syncSensorToSeat";
