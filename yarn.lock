@@ -2074,13 +2074,6 @@
     prompts "^2.4.2"
     semver "^7.5.2"
 
-"@react-native-community/datetimepicker@^8.5.0":
-  version "8.5.0"
-  resolved "https://registry.npmjs.org/@react-native-community/datetimepicker/-/datetimepicker-8.5.0.tgz"
-  integrity sha512-RMWll1aPppMtzdJz4we4poNzVj9WUw5URHID7D2ICjGZq3KjrwwexvBnzp75EIYE/ihHXCn/OvYKe73fws9Y/g==
-  dependencies:
-    invariant "^2.2.4"
-
 "@react-native-firebase/app@^23.4.1":
   version "23.5.0"
   resolved "https://registry.npmjs.org/@react-native-firebase/app/-/app-23.5.0.tgz"
@@ -7234,9 +7227,14 @@ react-is@^19.1.0, react-is@^19.1.1:
   resolved "https://registry.npmjs.org/react-is/-/react-is-19.2.0.tgz"
   integrity sha512-x3Ax3kNSMIIkyVYhWPyO09bu0uttcAIoecO/um/rKGQ4EltYWVYtyiGkS/3xMynrbVQdS69Jhlv8FXUEZehlzA==
 
+react-native-date-picker@^5.0.13:
+  version "5.0.13"
+  resolved "https://registry.yarnpkg.com/react-native-date-picker/-/react-native-date-picker-5.0.13.tgz#fe05f58652aaeee9e67f73cf7436c32a623ff3a4"
+  integrity sha512-qCLUODZVsJetO5zuoXjw1D39K527XWqBG8sOfhWdHyPzf13h8RXR1/RSKd1N0fdRDi5GdyizYmB0lPAK12/hbw==
+
 react-native-get-random-values@^2.0.0:
   version "2.0.0"
-  resolved "https://registry.npmjs.org/react-native-get-random-values/-/react-native-get-random-values-2.0.0.tgz"
+  resolved "https://registry.yarnpkg.com/react-native-get-random-values/-/react-native-get-random-values-2.0.0.tgz#21b6e40601d297a342378792a8cb9c8f853bff66"
   integrity sha512-wx7/aPqsUIiWsG35D+MsUJd8ij96e3JKddklSdrdZUrheTx89gPtz3Q2yl9knBArj5u26Cl23T88ai+Q0vypdQ==
   dependencies:
     fast-base64-decode "^1.0.0"
@@ -7279,6 +7277,11 @@ react-native-url-polyfill@2.0.0:
   integrity sha512-My330Do7/DvKnEvwQc0WdcBnFPploYKp9CYlefDXzIdEaA+PAhDYllkvGeEroEzvc4Kzzj2O4yVdz8v6fjRvhA==
   dependencies:
     whatwg-url-without-unicode "8.0.0-3"
+
+react-native-uuid@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/react-native-uuid/-/react-native-uuid-2.0.3.tgz#f85f8a8d68e52e3f1c18ba0f02ec7776f9d4a0da"
+  integrity sha512-f/YfIS2f5UB+gut7t/9BKGSCYbRA9/74A5R1MDp+FLYsuS+OSWoiM/D8Jko6OJB6Jcu3v6ONuddvZKHdIGpeiw==
 
 react-native-vector-icons@^10.3.0:
   version "10.3.0"

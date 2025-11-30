@@ -1,14 +1,16 @@
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import uuid from "react-native-uuid";               // ★ 변경된 부분
 import { updateSubjects } from "../../lib/users";
 import { useUserContext } from "../../contexts/UserContext";
-import { v4 as uuidv4 } from "uuid";
 
 function AddSubject({ subjects, setSubjects }) {
   const { user } = useUserContext();
 
   const add = async () => {
-    const newId = uuidv4();
+    if (!user?.uid) return;
+
+    const newId = uuid.v4();                       // ★ uuidv4() → uuid.v4()
 
     const newItem = {
       id: newId,

@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DatePicker from "react-native-date-picker";   // ★ RN20 호환
 import firestore from "@react-native-firebase/firestore";
 import { useUserContext } from "../../contexts/UserContext";
 
@@ -24,44 +24,34 @@ function DailyInfo() {
 
   const [showTimeModal, setShowTimeModal] = useState(false);
 
-  // 🔥 오늘 공부시간(분)
-  const [todayStudyMin, setTodayStudyMin] = useState(0); // 나중에 실제 값 넣으면 됨
+  const [todayStudyMin, setTodayStudyMin] = useState(0);
 
-  // 시간 리스트 생성
+  // 시간 선택 리스트
   const timeOptions = [];
   for (let h = 0; h < 24; h++) {
     for (let m = 0; m < 60; m += 30) {
-      const formatted = `${h.toString().padStart(2, "0")}:${m
-        .toString()
-        .padStart(2, "0")}`;
-      timeOptions.push(formatted);
+      timeOptions.push(
+        `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
+      );
     }
   }
 
-  const formatDate = (date) =>
+  const formatDate = (date: Date) =>
     `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
 
   const handlePrevDay = () =>
-    setSelectedDate(
-      (prev) => new Date(prev.setDate(prev.getDate() - 1))
-    );
+    setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1));
 
   const handleNextDay = () =>
-    setSelectedDate(
-      (prev) => new Date(prev.setDate(prev.getDate() + 1))
-    );
+    setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1));
 
   const openDatePicker = () => setShowDatePicker(true);
-
-  const onDateChange = (event, date) => {
-    setShowDatePicker(false);
-    if (date) setSelectedDate(date);
-  };
+  const closeDatePicker = () => setShowDatePicker(false);
 
   const openTimeModal = () => setShowTimeModal(true);
   const closeTimeModal = () => setShowTimeModal(false);
 
-  // 🔥 Firestore에서 목표시간 로드
+  // 🔥 목표 시간 Firestore 실시간 반영
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -73,11 +63,8 @@ function DailyInfo() {
           const g = doc.data().goals || 0;
           setGoalMinutes(g);
 
-          const h = Math.floor(g / 60)
-            .toString()
-            .padStart(2, "0");
+          const h = Math.floor(g / 60).toString().padStart(2, "0");
           const m = (g % 60).toString().padStart(2, "0");
-
           setTargetTime(`${h}:${m}`);
         }
       });
@@ -85,8 +72,8 @@ function DailyInfo() {
     return () => unsub();
   }, [user?.uid]);
 
-  // 🔥 목표 시간 선택 → Firestore 반영
-  const selectTime = async (time) => {
+  // 🔥 목표 시간 선택
+  const selectTime = async (time: string) => {
     setTargetTime(time);
     closeTimeModal();
 
@@ -100,18 +87,18 @@ function DailyInfo() {
         goals: total,
       });
     } catch (e) {
-      console.log("목표시간 저장 오류:", e);
+      console.log("목표 시간 저장 오류:", e);
       Alert.alert("오류", "목표 시간을 저장할 수 없습니다.");
     }
   };
 
-  // 🔥 그래프 = 오늘 공부시간 기준으로 계산
   const progressPercent =
     goalMinutes === 0 ? 0 : Math.min(todayStudyMin / goalMinutes, 1) * 100;
 
   return (
     <View style={styles.contentList}>
-      {/* 날짜 선택바 */}
+
+      {/* 날짜 선택 */}
       <View style={styles.dateBar}>
         <TouchableOpacity onPress={handlePrevDay}>
           <Icon name="chevron-left" size={28} color="#333" />
@@ -135,6 +122,7 @@ function DailyInfo() {
       {/* 목표시간 */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>목표 시간</Text>
+
         <View style={styles.rightGroup}>
           <Text style={styles.contentText}>{targetTime}</Text>
           <TouchableOpacity onPress={openTimeModal}>
@@ -143,11 +131,12 @@ function DailyInfo() {
         </View>
       </View>
 
-      {/* 목표시간 Modal */}
+      {/* 목표 시간 선택 Modal */}
       <Modal visible={showTimeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>목표 시간 선택</Text>
+
             <FlatList
               data={timeOptions}
               keyExtractor={(item) => item}
@@ -160,6 +149,7 @@ function DailyInfo() {
                 </TouchableOpacity>
               )}
             />
+
             <TouchableOpacity style={styles.closeButton} onPress={closeTimeModal}>
               <Text style={styles.closeText}>닫기</Text>
             </TouchableOpacity>
@@ -167,7 +157,7 @@ function DailyInfo() {
         </View>
       </Modal>
 
-      {/* 오늘 공부시간 (항상 오늘 기준) */}
+      {/* 오늘 공부시간 */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>오늘공부시간</Text>
         <Text style={styles.contentText}>
@@ -182,13 +172,10 @@ function DailyInfo() {
         <Text style={styles.contentText}>00:00</Text>
       </View>
 
-      {/* 그래프 — 항상 오늘 기준 */}
+      {/* 그래프 */}
       <View style={styles.progressContainer}>
         <View
-          style={[
-            styles.progressFill,
-            { width: `${progressPercent}%` },
-          ]}
+          style={[styles.progressFill, { width: `${progressPercent}%` }]}
         />
         <View style={styles.progressRemain} />
       </View>
@@ -198,27 +185,27 @@ function DailyInfo() {
         <Text style={styles.graphLabel}>목표시간</Text>
       </View>
 
-      {/* 날짜 선택기 */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={onDateChange}
-        />
-      )}
+      {/* 날짜 picker modal */}
+      <DatePicker
+        modal
+        open={showDatePicker}
+        mode="date"
+        date={selectedDate}
+        onConfirm={(date) => {
+          setShowDatePicker(false);
+          setSelectedDate(date);
+        }}
+        onCancel={() => setShowDatePicker(false)}
+      />
     </View>
   );
 }
 
 export default DailyInfo;
 
-/* 🔥 기존 CSS 전부 그대로 유지 */
+/* 스타일 (기존 동일) */
 const styles = StyleSheet.create({
-  contentList: {
-    flex: 1,
-  },
-
+  contentList: { flex: 1 },
   contentBox: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -230,24 +217,18 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
     width: "100%",
   },
-
   contentTitle: {
     fontSize: 15,
     color: "#828282",
     marginLeft: 24,
   },
-
   contentText: {
     fontSize: 15,
     color: "#828282",
     marginRight: 24,
   },
 
-  rightGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  rightGroup: { flexDirection: "row", alignItems: "center", gap: 10 },
 
   progressContainer: {
     flexDirection: "row",
@@ -259,15 +240,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     overflow: "hidden",
   },
-
-  progressFill: {
-    backgroundColor: "#005bac",
-  },
-
-  progressRemain: {
-    flex: 1,
-    backgroundColor: "#ddd",
-  },
+  progressFill: { backgroundColor: "#005bac" },
+  progressRemain: { flex: 1, backgroundColor: "#ddd" },
 
   progressLabel: {
     flexDirection: "row",
@@ -276,11 +250,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginTop: 8,
   },
-
-  graphLabel: {
-    color: "#555",
-    fontSize: 14,
-  },
+  graphLabel: { color: "#555", fontSize: 14 },
 
   dateBar: {
     flexDirection: "row",
@@ -290,7 +260,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 20,
   },
-
   dateText: {
     fontSize: 20,
     fontWeight: "600",
@@ -303,7 +272,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   modalBox: {
     width: "80%",
     height: "70%",
@@ -311,25 +279,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
   },
-
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 10,
     textAlign: "center",
   },
-
   timeItem: {
     paddingVertical: 10,
     alignItems: "center",
     borderBottomWidth: 1,
     borderColor: "#eee",
   },
-
-  timeText: {
-    fontSize: 18,
-    color: "#333",
-  },
+  timeText: { fontSize: 18, color: "#333" },
 
   closeButton: {
     backgroundColor: "#005bac",
@@ -337,7 +299,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 10,
   },
-
   closeText: {
     color: "white",
     fontWeight: "600",

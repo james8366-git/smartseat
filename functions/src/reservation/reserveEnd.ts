@@ -65,7 +65,7 @@ export const reserveEnd = onSchedule(
     student_number: "",
     occupiedAt: null,
     lastSeated: null,
-    lastChecked: admin.firestore.FieldValue.serverTimestamp(),
+    studylogId: admin.firestore.FieldValue.delete(),
     }, { merge: true });
 
     logger.log(`✔ 자동 반납 완료: ${seatId}`);

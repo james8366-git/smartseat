@@ -57,11 +57,11 @@ export const studyTimer = onSchedule(
 
       batch.update(seatRef, {
         totalTime: admin.firestore.FieldValue.increment(1),
-        lastChecked: now,
+        lastSeated: now,
       });
 
       batch.update(userRef, {
-        TotalStudyTime: admin.firestore.FieldValue.increment(1),
+        todayTotalTime: admin.firestore.FieldValue.increment(1),
         [fieldForSubject]: admin.firestore.FieldValue.increment(1),
       });
     }

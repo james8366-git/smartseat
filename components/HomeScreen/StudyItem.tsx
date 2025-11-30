@@ -1,81 +1,100 @@
+// components/HomeScreen/StudyItem.tsx
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
+/* 안전한 HH:MM:SS 포맷 */
 function format(sec) {
-  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
-  const s = String(sec % 60).padStart(2, "0");
+  const safe = typeof sec === "number" && !isNaN(sec) ? sec : 0;
+  const h = String(Math.floor(safe / 3600)).padStart(2, "0");
+  const m = String(Math.floor((safe % 3600) / 60)).padStart(2, "0");
+  const s = String(safe % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
 
-function StudyItem({ item, selectedId, uiTime, onSelect, onEdit, onDelete }) {
+export default function StudyItem({
+  item,
+  selectedId,
+  subjectUiTime,
+  onSelect,
+  onEdit,
+  onDelete,
+}) {
   const isSelected = item.id === selectedId;
+  const isBase = item.id === "base";
 
   return (
-    <View style={styles.list}>
-      <TouchableOpacity
-        style={[
-          styles.circle,
-          { backgroundColor: isSelected ? "#5A8DEE" : "#E3EBFF" },
-        ]}
-        onPress={() => onSelect(item.id)}
-      />
-
-      <TouchableOpacity style={styles.item} onPress={onEdit}>
-        <Text style={styles.text}>{item.name}</Text>
-      </TouchableOpacity>
-
-      <View style={styles.timeBox}>
-        <Text style={styles.timeText}>
-          {isSelected ? format(uiTime) : format(item.time ?? 0)}
+    <TouchableOpacity
+      onPress={onSelect}
+      style={[styles.container, isSelected && styles.selectedRow]}
+    >
+      <View style={styles.left}>
+        <View style={[styles.dot, isSelected && styles.selectedDot]} />
+        <Text style={isSelected ? styles.nameSelected : styles.name}>
+          {item.name}
         </Text>
       </View>
 
-      {item.id !== "0" ? (
-        <TouchableOpacity onPress={onDelete}>
-          <Icon name="delete" size={24} color="#000" />
-        </TouchableOpacity>
-      ) : (
-        <View style={{ width: 24 }} />
-      )}
-    </View>
+      <View style={styles.right}>
+        <Text style={styles.time}>{format(subjectUiTime)}</Text>
+
+        {!isBase && (
+          <>
+            <TouchableOpacity onPress={onDelete}>
+              <Icon name="delete" size={20} color="#000" />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={onEdit}>
+              <Icon name="edit" size={20} color="#000" />
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
-    flexDirection: "row",
-    alignItems: "center",
+  container: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderColor: "#E0E0E0",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  circle: {
-    width: 25,
-    height: 25,
-    borderRadius: 12,
+  selectedRow: {
+    backgroundColor: "#eef4ff",
+  },
+  left: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#d9d9d9",
     marginRight: 12,
   },
-  item: {
-    flex: 1,
-    justifyContent: "center",
+  selectedDot: {
+    backgroundColor: "#5A8DEE",
   },
-  text: {
-    color: "#555",
+  name: {
     fontSize: 16,
   },
-  timeBox: {
-    width: 90,
-    alignItems: "flex-end",
-    marginRight: 10,
+  nameSelected: {
+    fontSize: 16,
+    fontWeight: "700",
   },
-  timeText: {
+  right: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  time: {
     fontSize: 15,
-    color: "#333",
-    fontVariant: ["tabular-nums"],
+    fontWeight: "600",
+    minWidth: 80,
+    textAlign: "right",
   },
 });
-
-export default StudyItem;

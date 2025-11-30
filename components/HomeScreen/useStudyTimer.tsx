@@ -1,50 +1,151 @@
-import { useEffect, useRef, useState } from "react";
+// components/HomeScreen/useStudyTimer.tsx
+import { useEffect, useMemo, useRef, useState } from "react";
+import firestore from "@react-native-firebase/firestore";
 import { useUserContext } from "../../contexts/UserContext";
 
 /**
- * selectedSubjectId: 현재 선택된 과목 ID
- * subjects: [{ id, name, time, selected }]
+ * subjects: users/{uid}/subject → 배열 형태
+ * ➜ 각 subject는 반드시 { id, name, selected, time } 가지고 있어야 함
+ *
+ * 반환값:
+ *  - subjectTimes[subjectId] = UI에서 표시할 time(초)
+ *  - todayUiTime = 모든 과목 time 합계(초)
+ *  - seatStatus = "occupied" | "idle"
  */
-export function useStudyTimer(selectedSubjectId, subjects) {
+
+export function useStudyTimer(subjects) {
   const { user } = useUserContext();
-  const [uiTime, setUiTime] = useState(0);
-  const intervalRef = useRef(null);
+  const uid = user?.uid;
 
-  const getSelectedTimeFromDB = () => {
-    const sub = subjects.find((s) => s.id === selectedSubjectId);
-    return sub?.time ?? 0;
-  };
+  const [seatStatus, setSeatStatus] = useState<"occupied" | "idle">("idle");
 
-  // 🔥 과목이 바뀌면 UI 타이머 초기화
+  /* ------------------------------------------------------
+   * 1) 좌석 상태 구독
+   * ------------------------------------------------------ */
   useEffect(() => {
-    stopTimer();
-
-    const baseTime = getSelectedTimeFromDB();
-    setUiTime(baseTime);
-
-    if (user?.seatId) {
-      startTimer();
+    if (!user?.seatId) {
+      setSeatStatus("idle");
+      return;
     }
 
-    return stopTimer;
-  }, [selectedSubjectId, subjects]);
+    const unsub = firestore()
+      .collection("seats")
+      .doc(user.seatId)
+      .onSnapshot((snap) => {
+        const data = snap.data() as any;
+        if (!data || data.status !== "occupied") {
+          setSeatStatus("idle");
+        } else {
+          setSeatStatus("occupied");
+        }
+      });
 
-  // 🔥 좌석 반납/자리비움 → 타이머 멈춤
-  useEffect(() => {
-    if (!user?.seatId) stopTimer();
+    return () => unsub();
   }, [user?.seatId]);
 
-  const startTimer = () => {
-    if (intervalRef.current) return;
-    intervalRef.current = setInterval(() => {
-      setUiTime((prev) => prev + 1);
-    }, 1000);
-  };
+  /* ------------------------------------------------------
+   * 2) empty/none/object 상태면 runningSubjectSince 강제 종료
+   * ------------------------------------------------------ */
+  useEffect(() => {
+    if (!uid) return;
 
-  const stopTimer = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  };
+    if (seatStatus !== "occupied" && user?.runningSubjectSince) {
+      firestore().collection("users").doc(uid).update({
+        runningSubjectSince: null,
+      });
+    }
+  }, [seatStatus, uid]);
 
-  return uiTime;
+  /* ------------------------------------------------------
+   * 3) 자리 앉을 때 자동 beginSubject (selectedSubject 기준)
+   * ------------------------------------------------------ */
+  useEffect(() => {
+    if (seatStatus !== "occupied") return;
+
+    // runningSubjectSince가 없다면, 새로 시작해야 함
+    if (!user?.runningSubjectSince && user?.selectedSubject) {
+      firestore().collection("users").doc(uid).update({
+        runningSubjectSince: firestore.Timestamp.now(),
+      });
+    }
+  }, [seatStatus]);
+
+  /* ------------------------------------------------------
+   * 4) tick (1초 단위로 증가)
+   * ------------------------------------------------------ */
+  const [tick, setTick] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const hasRunning =
+      !!user?.runningSubjectSince && !!user?.selectedSubject;
+
+    const shouldRun = seatStatus === "occupied" && hasRunning;
+
+    if (shouldRun && !intervalRef.current) {
+      intervalRef.current = setInterval(() => {
+        setTick((t) => t + 1);
+      }, 1000);
+    } else if (!shouldRun && intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [seatStatus, user?.selectedSubject, user?.runningSubjectSince]);
+
+  /* ------------------------------------------------------
+   * 5) UI time 계산
+   * ------------------------------------------------------ */
+  const { subjectTimes, todayUiTime } = useMemo(() => {
+    // 1) DB에서 온 base time(초)
+    const base: Record<string, number> = {};
+    subjects.forEach((s) => {
+      base[s.id] = typeof s.time === "number" ? s.time : 0;
+    });
+
+    const result = { ...base };
+
+    // 2) 현재 선택된 과목만 diff 적용
+    const runningName = user?.selectedSubject;
+    const runningSubject = subjects.find((s) => s.name === runningName);
+    const runningId = runningSubject?.id;
+
+    const runningSince = user?.runningSubjectSince;
+
+    if (seatStatus === "occupied" && runningId && runningSince) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const startSec = Math.floor(
+        runningSince.toDate().getTime() / 1000
+      );
+      const diff = Math.max(0, nowSec - startSec);
+
+      result[runningId] = result[runningId] + diff;
+    }
+
+    // 3) TodayTimer = 모든 과목 time 합
+    const today = Object.values(result).reduce((a, b) => a + b, 0);
+
+    return {
+      subjectTimes: result,
+      todayUiTime: today,
+    };
+  }, [
+    tick,
+    subjects,
+    seatStatus,
+    user?.selectedSubject,
+    user?.runningSubjectSince,
+  ]);
+
+  return {
+    subjectTimes, // { subjectId: 초 }
+    todayUiTime,  // TodayTimer는 초 단위
+    seatStatus,
+  };
 }

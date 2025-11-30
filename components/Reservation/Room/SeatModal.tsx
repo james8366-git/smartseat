@@ -10,15 +10,18 @@ import {
 } from 'react-native';
 
 import { useUserContext } from '../../../contexts/UserContext';
-import { useSelectedSubject } from '../../../contexts/SelectedSubjectContext';
-import { reserveSeat } from '../../../lib/seats';
+import { reserveSeat } from '../../../lib/seats'; // 그대로 유지
+import firestore from '@react-native-firebase/firestore';
 
 function SeatModal({ visible, onClose, seat, roomName, navigation }) {
   const { user } = useUserContext();
-  const { selectedSubject } = useSelectedSubject();
 
   if (!seat) return null;
 
+  // 🔥 SelectedSubjectContext 제거 → Firestore 값 사용
+  const selectedSubject = user?.selectedSubject ?? null;
+
+  // seatLabel UI 그대로 유지
   const seatLabel = `${roomName} ${seat.seat_number}번`;
 
   const handleReserve = async () => {
@@ -38,20 +41,42 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
     }
 
     try {
-      // 🔥 프론트는 Firestore에 직접 접근 X → reserveSeat() 호출
+      /* -------------------------------------------
+       * 🔥 1) 최신 좌석 상태 가져오기 (중요!)
+       * ------------------------------------------- */
+      const latestSnap = await firestore()
+        .collection('seats')
+        .doc(seat.id)
+        .get();
+
+      if (!latestSnap.exists) {
+        Alert.alert('오류', '좌석 정보가 존재하지 않습니다.');
+        return;
+      }
+
+      const latest = latestSnap.data();
+
+      if (latest.status !== 'none') {
+        Alert.alert('오류', '이미 예약된 좌석입니다.');
+        return;
+      }
+
+      /* -------------------------------------------
+       * 🔥 2) 예약 트랜잭션
+       * ------------------------------------------- */
       await reserveSeat({
-        seatDocId: seat.seatId,
+        seatDocId: seat.id,
         roomId: seat.room,
         seatNumber: seat.seat_number,
         user: {
           uid: user.uid,
           student_number: user.student_number,
-          subject: user.subject ?? [],
           selectedSubject: selectedSubject,
         },
       });
 
       Alert.alert('예약 완료', '좌석 예약이 완료되었습니다.');
+
       onClose();
       navigation.navigate('HomeStack', { screen: 'Home' });
 
@@ -100,6 +125,7 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
 
 export default SeatModal;
 
+/* 🔥 CSS는 그대로 유지 */
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,

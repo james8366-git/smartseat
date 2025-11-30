@@ -30,7 +30,7 @@ function SignUpScreen({ navigation }) {
     seatId: '',
     reservelog: [],
     isadmin: false,
-    TotalStudyTime: 0,
+    todayTotalTime: 0,
     pomodoro: "",
     subject: ["공부"],
   });

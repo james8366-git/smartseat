@@ -1,83 +1,101 @@
 // screens/HomeScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import TodayTimer from '../components/HomeScreen/TodayTimer';
-import ReturnSeat from '../components/HomeScreen/ReturnSeat';
-import StudyList from '../components/HomeScreen/StudyList';
-import { useUserContext } from '../contexts/UserContext';
-import { getSubjects } from '../lib/users';
-import { useSelectedSubject } from '../contexts/SelectedSubjectContext';
-import firestore from '@react-native-firebase/firestore';
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet } from "react-native";
 
-function HomeScreen() {
+import TodayTimer from "../components/HomeScreen/TodayTimer";
+import StudyList from "../components/HomeScreen/StudyList";
+import ReturnSeat from "../components/HomeScreen/ReturnSeat";
+
+import { useUserContext } from "../contexts/UserContext";
+import firestore from "@react-native-firebase/firestore";
+
+import { getSubjects } from "../lib/users";
+import { useStudyTimer } from "../components/HomeScreen/useStudyTimer";
+
+export default function HomeScreen() {
   const { user, setUser } = useUserContext();
+
   const [subjects, setSubjects] = useState([]);
-  const { setSelectedSubject } = useSelectedSubject();
+  const [seatData, setSeatData] = useState(null);
 
-  /** ------------------------------
-   * ① Firestore 실시간 구독
-   *    seatId 변경 → 즉시 반영
-   * ------------------------------ */
-    useEffect(() => {
-        if (!user?.uid) return;
+  /* -----------------------------------------------------
+   * diff 기반 UI 타이머
+   * ----------------------------------------------------- */
+  const { todayUiTime, subjectTimes, seatStatus } = useStudyTimer(subjects);
 
-        const unsub = firestore()
-        .collection("users")
-        .doc(user.uid)
-        .onSnapshot((doc) => {
-            if (doc.exists) {
-            const data = doc.data();
-
-            // uid는 유지하면서 user 업데이트
-            setUser(prev => ({
-                ...prev,
-                ...data,
-                uid: prev.uid
-            }));
-            }
-        });
-
-        return () => unsub();
-    }, [user?.uid]);
-
-    useEffect(() => {
-        if (!user?.uid) return;
-
-        const load = async () => {
-        const data = await getSubjects(user.uid); 
-        setSubjects(data);     // ⭐ 변환 제거
-        };
-
-        load();
-    }, [user]);
-
-    console.log(user);
-    console.log("Project ID = ", firestore().app?.options.projectId);
-  /** ------------------------------
-   * ③ 선택된 과목(Context에 저장)
-   * ------------------------------ */
+  /* -----------------------------------------------------
+   * user 구독
+   * ----------------------------------------------------- */
   useEffect(() => {
-    const current = subjects.find(s => s.selected);
-    setSelectedSubject(current ? current.name : null);
-  }, [subjects]);
+    if (!user?.uid) return;
+
+    const unsub = firestore()
+      .collection("users")
+      .doc(user.uid)
+      .onSnapshot(async (doc) => {
+        if (!doc.exists) return;
+
+        const data = doc.data();
+        const { subject, ...rest } = data;
+
+        // user 정보 갱신 (subject는 따로 관리)
+        setUser((prev) => ({ ...prev, ...rest }));
+
+        // subjects 최신화
+        const list = await getSubjects(user.uid);
+        setSubjects(list);
+      });
+
+    return () => unsub();
+  }, [user?.uid]);
+
+  /* -----------------------------------------------------
+   * 좌석 라벨 구독
+   * ----------------------------------------------------- */
+  useEffect(() => {
+    if (!user?.seatId) {
+      setSeatData(null);
+      return;
+    }
+
+    const unsub = firestore()
+      .collection("seats")
+      .doc(user.seatId)
+      .onSnapshot((snap) => {
+        if (snap.exists) setSeatData(snap.data());
+        else setSeatData(null);
+      });
+
+    return () => unsub();
+  }, [user?.seatId]);
 
   return (
-    
     <View style={styles.container}>
-      <TodayTimer />
+      <TodayTimer uiTime={todayUiTime} />
 
-      <ReturnSeat seat={user?.seatId ?? ''} />
+      <ReturnSeat
+        user={user}
+        subjects={subjects}
+        subjectTimes={subjectTimes}
+        seatStatus={seatStatus}
+        seatData={seatData}
+        setSubjects={setSubjects}
+      />
 
-      <StudyList subjects={subjects} setSubjects={setSubjects} />
+      <StudyList
+        user={user}
+        subjects={subjects}
+        setSubjects={setSubjects}
+        subjectTimes={subjectTimes}
+        seatStatus={seatStatus}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'white' },
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
 });
-
-export default HomeScreen;
-
-
-
