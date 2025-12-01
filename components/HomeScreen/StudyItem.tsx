@@ -1,50 +1,53 @@
-// components/HomeScreen/StudyItem.tsx
+// components/HomeScreen/StudyItem.tsx — FINAL STABLE VERSION
+
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-/* 안전한 HH:MM:SS 포맷 */
+/* HH:MM:SS 포맷 */
 function format(sec) {
-  const safe = typeof sec === "number" && !isNaN(sec) ? sec : 0;
-  const h = String(Math.floor(safe / 3600)).padStart(2, "0");
-  const m = String(Math.floor((safe % 3600) / 60)).padStart(2, "0");
-  const s = String(safe % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
+  const s = typeof sec === "number" ? sec : 0;
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${h}:${m}:${ss}`;
 }
 
 export default function StudyItem({
-  item,
-  selectedId,
-  subjectUiTime,
-  onSelect,
-  onEdit,
+  subject,
+  selected,
+  subjectTimes = {},
+  onPress,
+  onLongPress,
   onDelete,
 }) {
-  const isSelected = item.id === selectedId;
-  const isBase = item.id === "base";
+  if (!subject) return null;
+
+  const { id, name } = subject;
+  const uiTime = subjectTimes[id] ?? subject.time ?? 0;
 
   return (
     <TouchableOpacity
-      onPress={onSelect}
-      style={[styles.container, isSelected && styles.selectedRow]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      style={[styles.container, selected && styles.selectedRow]}
     >
       <View style={styles.left}>
-        <View style={[styles.dot, isSelected && styles.selectedDot]} />
-        <Text style={isSelected ? styles.nameSelected : styles.name}>
-          {item.name}
+        <View style={[styles.dot, selected && styles.selectedDot]} />
+        <Text style={selected ? styles.nameSelected : styles.name}>
+          {name}
         </Text>
       </View>
 
       <View style={styles.right}>
-        <Text style={styles.time}>{format(subjectUiTime)}</Text>
+        <Text style={styles.time}>{format(uiTime)}</Text>
 
-        {!isBase && (
+        {id !== "base" && (
           <>
             <TouchableOpacity onPress={onDelete}>
               <Icon name="delete" size={20} color="#000" />
             </TouchableOpacity>
-
-            <TouchableOpacity onPress={onEdit}>
+            <TouchableOpacity onPress={onLongPress}>
               <Icon name="edit" size={20} color="#000" />
             </TouchableOpacity>
           </>
@@ -54,6 +57,7 @@ export default function StudyItem({
   );
 }
 
+/* CSS는 형의 원본 그대로 */
 const styles = StyleSheet.create({
   container: {
     paddingVertical: 12,

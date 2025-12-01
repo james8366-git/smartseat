@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import SeatGrid from "../../components/Reservation/Room/SeatGrid";
 import SeatModal from "../../components/Reservation/Room/SeatModal";
-import firestore from '@react-native-firebase/firestore';
+import firestore from "@react-native-firebase/firestore";
 
 function RoomScreen({ route, navigation }) {
   const { roomId, roomName } = route.params;
@@ -21,9 +21,9 @@ function RoomScreen({ route, navigation }) {
     const unsubscribe = firestore()
       .collection("seats")
       .where("room", "==", roomId)
-      .onSnapshot(snapshot => {
+      .onSnapshot((snapshot) => {
         const seatList = snapshot.docs
-          .map(doc => ({
+          .map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }))
@@ -49,11 +49,7 @@ function RoomScreen({ route, navigation }) {
     <View style={styles.container}>
       <Text style={styles.title}>{roomName}</Text>
 
-      <SeatGrid
-        seats={seats}
-        seatsPerRow={6}
-        onSeatPress={handleSeatPress}
-      />
+      <SeatGrid seats={seats} seatsPerRow={6} onSeatPress={handleSeatPress} />
 
       <SeatModal
         visible={modalVisible}

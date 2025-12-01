@@ -1,28 +1,30 @@
+// AddSubject.tsx — FINAL (subjects는 직접 set 하지 않음)
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
-import uuid from "react-native-uuid";               // ★ 변경된 부분
+import uuid from "react-native-uuid";
 import { updateSubjects } from "../../lib/users";
 import { useUserContext } from "../../contexts/UserContext";
 
-function AddSubject({ subjects, setSubjects }) {
+function AddSubject({ subjects }) {
   const { user } = useUserContext();
 
   const add = async () => {
     if (!user?.uid) return;
 
-    const newId = uuid.v4();                       // ★ uuidv4() → uuid.v4()
+    const newId = uuid.v4();
 
     const newItem = {
       id: newId,
       name: "새 과목",
-      selected: false,
       time: 0,
     };
 
     const updated = [...subjects, newItem];
 
-    setSubjects(updated);
+    // ❌ setSubjects(updated) 제거 (중복 갱신 → 깜빡임 원인)
     await updateSubjects(user.uid, updated);
+
+    // ✔ HomeScreen user snapshot이 알아서 subjects를 다시 불러온다.
   };
 
   return (

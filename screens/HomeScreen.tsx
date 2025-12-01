@@ -1,5 +1,6 @@
-// screens/HomeScreen.tsx
-import React, { useEffect, useState } from "react";
+// screens/HomeScreen.tsx — FINAL STABLE VERSION
+
+import React, { useEffect, useState, useRef } from "react";
 import { View, StyleSheet } from "react-native";
 
 import TodayTimer from "../components/HomeScreen/TodayTimer";
@@ -9,93 +10,80 @@ import ReturnSeat from "../components/HomeScreen/ReturnSeat";
 import { useUserContext } from "../contexts/UserContext";
 import firestore from "@react-native-firebase/firestore";
 
-import { getSubjects } from "../lib/users";
 import { useStudyTimer } from "../components/HomeScreen/useStudyTimer";
+import { finishAllSessions } from "../lib/timer";
 
 export default function HomeScreen() {
   const { user, setUser } = useUserContext();
-
-  const [subjects, setSubjects] = useState([]);
   const [seatData, setSeatData] = useState(null);
 
-  /* -----------------------------------------------------
-   * diff 기반 UI 타이머
-   * ----------------------------------------------------- */
-  const { todayUiTime, subjectTimes, seatStatus } = useStudyTimer(subjects);
+  const { todayUiTime, subjectTimes, seatStatus } = useStudyTimer();
 
-  /* -----------------------------------------------------
-   * user 구독
-   * ----------------------------------------------------- */
+  const isFlushingRef = useRef(false);
+
+  /* --------------------------------------------------------
+   * USER SNAPSHOT (subject 포함 필수!)
+   * -------------------------------------------------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
-    const unsub = firestore()
+    return firestore()
       .collection("users")
       .doc(user.uid)
-      .onSnapshot(async (doc) => {
-        if (!doc.exists) return;
-
-        const data = doc.data();
-        const { subject, ...rest } = data;
-
-        // user 정보 갱신 (subject는 따로 관리)
-        setUser((prev) => ({ ...prev, ...rest }));
-
-        // subjects 최신화
-        const list = await getSubjects(user.uid);
-        setSubjects(list);
+      .onSnapshot((snap) => {
+        if (!snap.exists) return;
+        const data = snap.data();
+        setUser((prev) => ({ ...prev, ...data }));
       });
-
-    return () => unsub();
   }, [user?.uid]);
 
-  /* -----------------------------------------------------
-   * 좌석 라벨 구독
-   * ----------------------------------------------------- */
+  /* --------------------------------------------------------
+   * SEAT SNAPSHOT → flush 감지
+   * -------------------------------------------------------- */
   useEffect(() => {
     if (!user?.seatId) {
       setSeatData(null);
       return;
     }
 
-    const unsub = firestore()
-      .collection("seats")
-      .doc(user.seatId)
-      .onSnapshot((snap) => {
-        if (snap.exists) setSeatData(snap.data());
-        else setSeatData(null);
-      });
+    const seatRef = firestore().collection("seats").doc(user.seatId);
+    let prevStatus = "empty";
 
-    return () => unsub();
-  }, [user?.seatId]);
+    return seatRef.onSnapshot(async (snap) => {
+      if (!snap.exists) return;
+      const data = snap.data();
+      setSeatData(data);
+
+      const now = data.status;
+      const leaving = prevStatus === "occupied" && now !== "occupied";
+
+      if (leaving && !isFlushingRef.current) {
+        isFlushingRef.current = true;
+
+        if (user.selectedSubject && user.runningSubjectSince) {
+          await finishAllSessions({
+            uid: user.uid,
+            selectedSubject: user.selectedSubject,
+            runningSubjectSince: user.runningSubjectSince,
+          });
+        }
+
+        isFlushingRef.current = false;
+      }
+
+      prevStatus = now;
+    });
+  }, [user?.seatId, user?.selectedSubject, user?.runningSubjectSince]);
 
   return (
     <View style={styles.container}>
       <TodayTimer uiTime={todayUiTime} />
-
-      <ReturnSeat
-        user={user}
-        subjects={subjects}
-        subjectTimes={subjectTimes}
-        seatStatus={seatStatus}
-        seatData={seatData}
-        setSubjects={setSubjects}
-      />
-
-      <StudyList
-        user={user}
-        subjects={subjects}
-        setSubjects={setSubjects}
-        subjectTimes={subjectTimes}
-        seatStatus={seatStatus}
-      />
+      <ReturnSeat user={user} seatData={seatData} />
+      <StudyList subjectTimes={subjectTimes} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
 });

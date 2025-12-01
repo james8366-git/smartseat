@@ -1,4 +1,3 @@
-// lib/timer.ts
 import firestore from "@react-native-firebase/firestore";
 import { FirebaseFirestoreTypes } from "@react-native-firebase/firestore";
 
@@ -13,7 +12,7 @@ function toSafeSeconds(v: any): number {
  */
 export async function flushSubject({
   uid,
-  subjectId,
+  subjectId,               // ← id 기반
   runningSubjectSince,
 }: {
   uid: string;
@@ -31,14 +30,14 @@ export async function flushSubject({
       if (!data) return;
 
       const subjectMap = data.subject || {};
-      const target = subjectMap[subjectId];
+      const target = subjectMap[subjectId]; // ← id key로 찾음
       if (!target) return;
 
       const prev = toSafeSeconds(target.time);
       const startSec = Math.floor(runningSubjectSince.toDate().getTime() / 1000);
       const nowSec = Math.floor(Date.now() / 1000);
 
-      const diff = Math.max(0, nowSec - startSec); // 이번 세션 공부한 총 초
+      const diff = Math.max(0, nowSec - startSec);
 
       tx.update(userRef, {
         [`subject.${subjectId}.time`]: prev + diff,
@@ -50,22 +49,22 @@ export async function flushSubject({
 }
 
 /**
- * 새 과목 시작 → selectedSubject 변경 + runningSubjectSince = now
+ * 새 과목 시작 → selectedSubject = id
  */
 export async function beginSubject({
   uid,
-  newSubject,
+  newSubjectId,
 }: {
   uid: string;
-  newSubject: string;
+  newSubjectId: string;
 }) {
-  if (!uid || !newSubject) return;
+  if (!uid || !newSubjectId) return;
 
   const userRef = firestore().collection("users").doc(uid);
 
   try {
     await userRef.update({
-      selectedSubject: newSubject,
+      selectedSubject: newSubjectId,
       runningSubjectSince: firestore.Timestamp.now(),
     });
   } catch (e) {
@@ -74,43 +73,43 @@ export async function beginSubject({
 }
 
 /**
- * 과목 변경 시(공부 → 알고리즘)
- * 1) 기존 과목 flush
- * 2) 새 과목 begin
+ * 과목 변경 시
+ * 1) 기존 과목 flush(id)
+ * 2) 새 과목 begin(id)
  */
 export async function switchSubject({
   uid,
-  oldSubject,
-  newSubject,
+  oldSubjectId,
+  newSubjectId,
   runningSubjectSince,
 }: {
   uid: string;
-  oldSubject: string;
-  newSubject: string;
+  oldSubjectId: string;
+  newSubjectId: string;
   runningSubjectSince: FirebaseFirestoreTypes.Timestamp | null;
 }) {
   if (!uid) return;
 
-  // 기존 과목 flush
-  if (oldSubject && runningSubjectSince) {
+  // flush previous
+  if (oldSubjectId && runningSubjectSince) {
     await flushSubject({
       uid,
-      subjectId: oldSubject,
+      subjectId: oldSubjectId,
       runningSubjectSince,
     });
   }
 
-  // 새 과목 시작
+  // begin new
   await beginSubject({
     uid,
-    newSubject,
+    newSubjectId,
   });
 }
 
 /**
- * empty 또는 none 이 될 때:
- * 1) 현재 과목 flush
- * 2) runningSubjectSince = null 로 리셋
+ * empty / none / object / 반납
+ * 1) 현재 과목 flush(id)
+ * 2) runningSubjectSince 초기화
  */
 export async function finishAllSessions({
   uid,
@@ -123,16 +122,14 @@ export async function finishAllSessions({
 }) {
   if (!uid) return;
 
-  // flush
   if (selectedSubject && runningSubjectSince) {
     await flushSubject({
       uid,
-      subjectId: selectedSubject,
+      subjectId: selectedSubject, // ← id
       runningSubjectSince,
     });
   }
 
-  // runningSubjectSince 제거
   const userRef = firestore().collection("users").doc(uid);
 
   try {

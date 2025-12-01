@@ -1,4 +1,4 @@
-// components/HomeScreen/EditSubject.tsx
+// EditSubject.tsx — FINAL VERSION
 import React from "react";
 import {
   View,
@@ -18,11 +18,9 @@ export default function EditSubject({
   newName,
   setNewName,
   subjects,
-  setSubjects,
   syncToFirestore,
 }) {
   const { user } = useUserContext();
-
   if (!editingSubject) return null;
 
   const isBase = editingSubject.id === "base";
@@ -33,26 +31,28 @@ export default function EditSubject({
   const handleSave = async () => {
     if (isBase) return;
 
-    /** 1) subject 배열에서 이름 변경 */
+    /** 1) subject 배열에서 이름만 변경 */
     const updated = subjects.map((s) =>
       s.id === editingSubject.id ? { ...s, name: newName } : s
     );
 
-    setSubjects(updated);
+    // ❌ setSubjects(updated) 제거 — 중복 갱신이므로 X
+    // setSubjects(updated);
 
-    /** 2) 만약 현재 선택한 과목이라면 selectedSubject도 변경 */
-    if (user.selectedSubject === editingSubject.name) {
+    /** 2) 선택된 과목이 editingSubject라면 id 기반으로 처리 */
+    if (user.selectedSubject === editingSubject.id) {
       await firestore()
         .collection("users")
         .doc(user.uid)
         .update({
-          selectedSubject: newName, // 선택된 과목 이름도 변경
+          selectedSubject: editingSubject.id, // id 유지
         });
     }
 
-    /** 3) Firestore에 subject 맵 저장 */
+    /** 3) Firestore subject MAP 저장 */
     await syncToFirestore(updated);
 
+    // ✔ HomeScreen user snapshot이 알아서 subjects 재로딩함
     setVisible(false);
   };
 
@@ -60,9 +60,6 @@ export default function EditSubject({
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.box}>
-          {/* ---------------------------------------------------
-           * base 과목은 수정 불가
-           * --------------------------------------------------- */}
           {isBase ? (
             <>
               <Text style={styles.title}>‘공부’ 과목은 수정할 수 없습니다.</Text>
@@ -146,7 +143,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 4,
   },
-
   cancel: {
     backgroundColor: "#eee",
   },
@@ -157,7 +153,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
   },
-
   closeButton: {
     marginTop: 10,
     backgroundColor: "#5A8DEE",

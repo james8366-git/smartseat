@@ -1,5 +1,6 @@
 // components/Reservation/Room/SeatModal.tsx
-import React from 'react';
+
+import React from "react";
 import {
   Modal,
   View,
@@ -7,63 +8,58 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-} from 'react-native';
+} from "react-native";
 
-import { useUserContext } from '../../../contexts/UserContext';
-import { reserveSeat } from '../../../lib/seats'; // 그대로 유지
-import firestore from '@react-native-firebase/firestore';
+import { useUserContext } from "../../../contexts/UserContext";
+import { reserveSeat } from "../../../lib/seats";
+import firestore from "@react-native-firebase/firestore";
 
 function SeatModal({ visible, onClose, seat, roomName, navigation }) {
   const { user } = useUserContext();
 
   if (!seat) return null;
 
-  // 🔥 SelectedSubjectContext 제거 → Firestore 값 사용
-  const selectedSubject = user?.selectedSubject ?? null;
+  // 🔥 selectedSubject = 과목 id(uuid)
+  const selectedSubjectId = user?.selectedSubject ?? null;
 
-  // seatLabel UI 그대로 유지
   const seatLabel = `${roomName} ${seat.seat_number}번`;
 
   const handleReserve = async () => {
     if (!user) {
-      Alert.alert('오류', '로그인 정보가 없습니다.');
+      Alert.alert("오류", "로그인 정보가 없습니다.");
       return;
     }
 
-    if (!selectedSubject) {
-      Alert.alert('오류', '먼저 홈 화면에서 과목을 선택해주세요.');
+    // 🔥 이제 id 기반으로 체크
+    if (!selectedSubjectId) {
+      Alert.alert("오류", "먼저 홈 화면에서 과목을 선택해주세요.");
       return;
     }
 
-    if (user.seatId && user.seatId !== '') {
-      Alert.alert('이미 자리를 예약하셨습니다.');
+    if (user.seatId && user.seatId !== "") {
+      Alert.alert("이미 자리를 예약하셨습니다.");
       return;
     }
 
     try {
-      /* -------------------------------------------
-       * 🔥 1) 최신 좌석 상태 가져오기 (중요!)
-       * ------------------------------------------- */
       const latestSnap = await firestore()
-        .collection('seats')
+        .collection("seats")
         .doc(seat.id)
         .get();
 
       if (!latestSnap.exists) {
-        Alert.alert('오류', '좌석 정보가 존재하지 않습니다.');
+        Alert.alert("오류", "좌석 정보가 존재하지 않습니다.");
         return;
       }
 
       const latest = latestSnap.data();
 
-      if (latest.status !== 'none') {
-        Alert.alert('오류', '이미 예약된 좌석입니다.');
+      if (latest.status !== "none") {
+        Alert.alert("오류", "이미 예약된 좌석입니다.");
         return;
       }
 
-      /* -------------------------------------------
-       * 🔥 2) 예약 트랜잭션
-       * ------------------------------------------- */
+      /* 예약 트랜잭션 */
       await reserveSeat({
         seatDocId: seat.id,
         roomId: seat.room,
@@ -71,35 +67,36 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
         user: {
           uid: user.uid,
           student_number: user.student_number,
-          selectedSubject: selectedSubject,
+          selectedSubject: selectedSubjectId, // ✔ id 기반으로 전달
         },
       });
 
-      Alert.alert('예약 완료', '좌석 예약이 완료되었습니다.');
+      Alert.alert("예약 완료", "좌석 예약이 완료되었습니다.");
 
       onClose();
-      navigation.navigate('HomeStack', { screen: 'Home' });
-
-    } catch (e) {
+      navigation.navigate("HomeStack", { screen: "Home" });
+    } catch (e: any) {
       console.log("Reserve ERROR:", e);
 
-      if (e.message === 'SEAT_ALREADY_RESERVED') {
-        Alert.alert('오류', '이미 선점된 자리입니다.');
-      } 
-      else if (e.message === 'USER_ALREADY_HAS_SEAT') {
-        Alert.alert('오류', '이미 자리를 예약하셨습니다.');
-      } 
-      else if (e.message === 'NO_SEAT') {
-        Alert.alert('오류', '해당 좌석이 존재하지 않습니다.');
-      } 
-      else {
-        Alert.alert('오류', '예약 중 문제가 발생했습니다.');
+      if (e.message === "SEAT_ALREADY_RESERVED") {
+        Alert.alert("오류", "이미 선점된 자리입니다.");
+      } else if (e.message === "USER_ALREADY_HAS_SEAT") {
+        Alert.alert("오류", "이미 자리를 예약하셨습니다.");
+      } else if (e.message === "NO_SEAT") {
+        Alert.alert("오류", "해당 좌석이 존재하지 않습니다.");
+      } else {
+        Alert.alert("오류", "예약 중 문제가 발생했습니다.");
       }
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
         <View style={styles.box}>
           <Text style={styles.title}>좌석예약</Text>
@@ -111,7 +108,7 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: '#999' }]}
+              style={[styles.button, { backgroundColor: "#999" }]}
               onPress={onClose}
             >
               <Text style={styles.btnText}>닫기</Text>
@@ -125,29 +122,28 @@ function SeatModal({ visible, onClose, seat, roomName, navigation }) {
 
 export default SeatModal;
 
-/* 🔥 CSS는 그대로 유지 */
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
   box: {
-    width: '80%',
-    backgroundColor: 'white',
+    width: "80%",
+    backgroundColor: "white",
     padding: 20,
     borderRadius: 12,
   },
-  title: { fontSize: 18, marginBottom: 10, fontWeight: '600' },
+  title: { fontSize: 18, marginBottom: 10, fontWeight: "600" },
   label: { fontSize: 16, marginBottom: 20 },
-  row: { flexDirection: 'row', justifyContent: 'space-evenly', marginTop: 10 },
+  row: { flexDirection: "row", justifyContent: "space-evenly", marginTop: 10 },
   button: {
     padding: 12,
     borderRadius: 8,
-    backgroundColor: '#5A8DEE',
-    width: '40%',
-    alignItems: 'center',
+    backgroundColor: "#5A8DEE",
+    width: "40%",
+    alignItems: "center",
   },
-  btnText: { color: 'white', fontWeight: 'bold' },
+  btnText: { color: "white", fontWeight: "bold" },
 });
