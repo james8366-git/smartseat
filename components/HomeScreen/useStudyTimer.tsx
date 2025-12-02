@@ -1,23 +1,20 @@
-// components/HomeScreen/useStudyTimer.tsx
-// FINAL-STABLE: Flicker ZERO, Rollback ZERO, DB-lag immune.
+// useStudyTimer.tsx — FINAL PATCH VERSION (FULL CODE)
+// ✔ 과목 삭제 시 TodayTimer 오차 증가 버그 해결
+// ✔ runningSubjectSince=null 되는 순간 UI 시간을 DB 기준으로 리셋
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import firestore from "@react-native-firebase/firestore";
 import { useUserContext } from "../../contexts/UserContext";
 
 export function useStudyTimer() {
   const { user } = useUserContext();
 
-  /* --------------------------------------------------
-   * 0) Persistent subjectTimes state (rollback 방지 핵심)
-   * -------------------------------------------------- */
-  const [subjectTimesState, setSubjectTimesState] = useState({}); // {id: seconds}
-
-  /* --------------------------------------------------
-   * 1) 좌석 상태 구독
-   * -------------------------------------------------- */
   const [seatStatus, setSeatStatus] = useState("empty");
+  const [subjectTimesState, setSubjectTimesState] = useState({});
 
+  /* --------------------------------------------------
+   * 좌석 상태 실시간 구독
+   * -------------------------------------------------- */
   useEffect(() => {
     if (!user?.seatId) {
       setSeatStatus("empty");
@@ -29,19 +26,17 @@ export function useStudyTimer() {
       .doc(user.seatId)
       .onSnapshot((snap) => {
         const d = snap.data();
-        setSeatStatus(d?.status === "occupied" ? "occupied" : "empty");
+        setSeatStatus(d?.status ?? "empty");
       });
   }, [user?.seatId]);
 
   /* --------------------------------------------------
-   * 2) Auto start when occupied
+   * occupied → runningSubjectSince 시작
    * -------------------------------------------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
-    if (seatStatus === "occupied" &&
-        user.selectedSubject &&
-        !user.runningSubjectSince) {
+    if (seatStatus === "occupied" && !user.runningSubjectSince) {
       firestore()
         .collection("users")
         .doc(user.uid)
@@ -49,40 +44,33 @@ export function useStudyTimer() {
           runningSubjectSince: firestore.Timestamp.now(),
         });
     }
-  }, [seatStatus, user?.selectedSubject]);
+  }, [seatStatus, user?.uid, user?.runningSubjectSince]);
 
   /* --------------------------------------------------
-   * 3) Auto stop when empty
+   * empty/object/none → runningSubjectSince 종료
    * -------------------------------------------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
-    if (seatStatus === "empty" && user.runningSubjectSince) {
-      firestore()
-        .collection("users")
-        .doc(user.uid)
-        .update({
-          runningSubjectSince: null,
-        });
+    if (seatStatus !== "occupied" && user.runningSubjectSince) {
+      firestore().collection("users").doc(user.uid).update({
+        runningSubjectSince: null,
+      });
     }
-  }, [seatStatus]);
+  }, [seatStatus, user?.uid, user?.runningSubjectSince]);
 
   /* --------------------------------------------------
-   * 4) tick (active일 때만 증가)
+   * tick (UI diff 계산)
    * -------------------------------------------------- */
   const isActive =
-    seatStatus === "occupied" &&
-    user?.selectedSubject &&
-    user?.runningSubjectSince;
+    seatStatus === "occupied" && !!user?.runningSubjectSince;
 
   const [tick, setTick] = useState(0);
   const intervalRef = useRef(null);
 
   useEffect(() => {
     if (isActive && !intervalRef.current) {
-      intervalRef.current = setInterval(() => {
-        setTick((t) => t + 1);
-      }, 1000);
+      intervalRef.current = setInterval(() => setTick((t) => t + 1), 1000);
     }
 
     if (!isActive && intervalRef.current) {
@@ -97,55 +85,71 @@ export function useStudyTimer() {
   }, [isActive]);
 
   /* --------------------------------------------------
-   * 5) DB 값 반영 + rollback 방지: subjectTimesState 업데이트
+   * Firestore subject.time → 로컬 초기 반영
    * -------------------------------------------------- */
   useEffect(() => {
     if (!user?.subject) return;
 
-    setSubjectTimesState((prev) => {
-      const next = { ...prev };
-
+    setSubjectTimesState(() => {
+      const next = {};
       Object.entries(user.subject).forEach(([id, s]) => {
-        const dbTime = s.time ?? 0;
-        next[id] = Math.max(prev[id] ?? 0, dbTime);
+        next[id] = s.time ?? 0;
       });
-
       return next;
     });
   }, [user?.subject]);
 
   /* --------------------------------------------------
-   * 6) Active 모드 diff 계산 후 subjectTimesState 반영
+   * ⭐ 핵심 FIX
+   * runningSubjectSince === null (즉, 삭제/반납/이탈) → UI 시간 강제 초기화
+   * -------------------------------------------------- */
+  useEffect(() => {
+    if (!user?.runningSubjectSince) {
+      if (!user?.subject) return;
+
+      // DB 기준으로 즉시 리셋
+      setSubjectTimesState(() => {
+        const next = {};
+        Object.entries(user.subject).forEach(([id, s]) => {
+          next[id] = s.time ?? 0;
+        });
+        return next;
+      });
+    }
+  }, [user?.runningSubjectSince]);  // ← 핵심
+
+  /* --------------------------------------------------
+   * Active diff 계산 → UI 시간 증가
    * -------------------------------------------------- */
   useEffect(() => {
     if (!isActive) return;
 
-    const running = user.selectedSubject!;
-    const since = user.runningSubjectSince!;
-    const startSec = since.toDate().getTime() / 1000;
+    const subjectId = user.selectedSubject;
+    const since = user.runningSubjectSince;
+    if (!subjectId || !since) return;
+
+    const start = since.toDate().getTime() / 1000;
     const nowSec = Date.now() / 1000;
-    const diff = Math.max(0, Math.floor(nowSec - startSec));
+    const diff = Math.max(0, Math.floor(nowSec - start));
 
     setSubjectTimesState((prev) => {
-      const next = { ...prev };
-      const base = user.subject?.[running]?.time ?? 0;
-      next[running] = Math.max(prev[running] ?? 0, base + diff);
-      return next;
+      const base = user.subject?.[subjectId]?.time ?? 0;
+      return {
+        ...prev,
+        [subjectId]: base + diff,
+      };
     });
   }, [tick, isActive, user?.subject, user?.runningSubjectSince]);
 
   /* --------------------------------------------------
-   * 7) Today total
+   * Today Total
    * -------------------------------------------------- */
   const todayUiTime = useMemo(() => {
     return Object.values(subjectTimesState).reduce((a, b) => a + b, 0);
   }, [subjectTimesState]);
 
-  /* --------------------------------------------------
-   * 8) Return
-   * -------------------------------------------------- */
   return {
-    subjectTimes: subjectTimesState, // rollback 불가능한 확정값
+    subjectTimes: subjectTimesState,
     todayUiTime,
     seatStatus,
   };

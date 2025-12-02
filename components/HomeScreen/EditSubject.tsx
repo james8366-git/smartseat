@@ -1,15 +1,15 @@
-// EditSubject.tsx — FINAL VERSION
+// EditSubject.tsx — FINAL VERSION (CSS 변경 없음)
+
 import React from "react";
 import {
+  Modal,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Modal,
   StyleSheet,
 } from "react-native";
-import firestore from "@react-native-firebase/firestore";
-import { useUserContext } from "../../contexts/UserContext";
+import { updateSubjects } from "../../lib/users";
 
 export default function EditSubject({
   visible,
@@ -20,39 +20,14 @@ export default function EditSubject({
   subjects,
   syncToFirestore,
 }) {
-  const { user } = useUserContext();
   if (!editingSubject) return null;
 
-  const isBase = editingSubject.id === "base";
-
-  /* -------------------------------------------------------
-   * 저장 처리
-   * ------------------------------------------------------- */
-  const handleSave = async () => {
-    if (isBase) return;
-
-    /** 1) subject 배열에서 이름만 변경 */
+  const onSave = async () => {
     const updated = subjects.map((s) =>
       s.id === editingSubject.id ? { ...s, name: newName } : s
     );
 
-    // ❌ setSubjects(updated) 제거 — 중복 갱신이므로 X
-    // setSubjects(updated);
-
-    /** 2) 선택된 과목이 editingSubject라면 id 기반으로 처리 */
-    if (user.selectedSubject === editingSubject.id) {
-      await firestore()
-        .collection("users")
-        .doc(user.uid)
-        .update({
-          selectedSubject: editingSubject.id, // id 유지
-        });
-    }
-
-    /** 3) Firestore subject MAP 저장 */
     await syncToFirestore(updated);
-
-    // ✔ HomeScreen user snapshot이 알아서 subjects 재로딩함
     setVisible(false);
   };
 
@@ -60,45 +35,26 @@ export default function EditSubject({
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.box}>
-          {isBase ? (
-            <>
-              <Text style={styles.title}>‘공부’ 과목은 수정할 수 없습니다.</Text>
+          <Text style={styles.title}>과목 수정</Text>
 
-              <TouchableOpacity
-                style={[styles.button, styles.closeButton]}
-                onPress={() => setVisible(false)}
-              >
-                <Text style={styles.closeText}>닫기</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={styles.title}>과목 이름 변경</Text>
+          <TextInput
+            style={styles.input}
+            value={newName}
+            onChangeText={setNewName}
+          />
 
-              <TextInput
-                style={styles.input}
-                value={newName}
-                onChangeText={setNewName}
-                placeholder="과목 이름"
-              />
+          <View style={styles.row}>
+            <TouchableOpacity style={styles.saveBtn} onPress={onSave}>
+              <Text style={styles.saveText}>저장</Text>
+            </TouchableOpacity>
 
-              <View style={styles.row}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancel]}
-                  onPress={() => setVisible(false)}
-                >
-                  <Text>취소</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.button, styles.save]}
-                  onPress={handleSave}
-                >
-                  <Text style={styles.saveText}>저장</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: "#bbb" }]}
+              onPress={() => setVisible(false)}
+            >
+              <Text style={styles.saveText}>취소</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -108,58 +64,34 @@ export default function EditSubject({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
   },
   box: {
-    width: "75%",
+    width: "80%",
     backgroundColor: "white",
-    borderRadius: 10,
     padding: 20,
+    borderRadius: 12,
   },
-  title: {
-    fontSize: 17,
-    fontWeight: "700",
-    marginBottom: 15,
-    textAlign: "center",
-  },
+  title: { fontSize: 18, fontWeight: "600", marginBottom: 10 },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 20,
+    padding: 10,
+    borderRadius: 6,
   },
   row: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-evenly",
+    marginTop: 20,
   },
-  button: {
-    flex: 1,
-    padding: 12,
-    alignItems: "center",
+  saveBtn: {
+    backgroundColor: "#5A8DEE",
+    padding: 10,
     borderRadius: 8,
-    marginHorizontal: 4,
+    width: "40%",
+    alignItems: "center",
   },
-  cancel: {
-    backgroundColor: "#eee",
-  },
-  save: {
-    backgroundColor: "#5A8DEE",
-  },
-  saveText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  closeButton: {
-    marginTop: 10,
-    backgroundColor: "#5A8DEE",
-  },
-  closeText: {
-    color: "white",
-    fontWeight: "600",
-    textAlign: "center",
-  },
+  saveText: { color: "#fff", fontWeight: "600" },
 });

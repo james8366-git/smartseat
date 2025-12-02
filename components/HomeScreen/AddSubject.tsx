@@ -1,4 +1,5 @@
-// AddSubject.tsx — FINAL (subjects는 직접 set 하지 않음)
+// AddSubject.tsx — FINAL CLEAN VERSION (CSS 변경 없음)
+
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import uuid from "react-native-uuid";
@@ -21,10 +22,8 @@ function AddSubject({ subjects }) {
 
     const updated = [...subjects, newItem];
 
-    // ❌ setSubjects(updated) 제거 (중복 갱신 → 깜빡임 원인)
+    // Firestore에만 반영 → snapshot이 다시 불러옴
     await updateSubjects(user.uid, updated);
-
-    // ✔ HomeScreen user snapshot이 알아서 subjects를 다시 불러온다.
   };
 
   return (
