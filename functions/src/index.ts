@@ -18,6 +18,6 @@ export { reserveEnd } from "./reservation/reserveEnd";
 // export { abnormalPressure } from "./seating/abnormalPressure";
 // export { seatIdleCheck } from "./seating/seatIdleCheck";
 export { seatStatusChange } from "./seating/seatStatusChange";
-export {studyTimer} from "./studyTimer";
+// export {studyTimer} from "./studyTimer";
 export {dailyReset} from "./dailyReset";
 // export { syncSensorToSeat } from "./seating/syncSensorToSeat";
