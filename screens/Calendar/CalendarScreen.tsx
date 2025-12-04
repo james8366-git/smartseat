@@ -32,6 +32,35 @@ function Calendar() {
   // 🔥 추가된 부분
   const [subjectMap, setSubjectMap] = useState({}); // { uuid: {name, time} }
 
+    // ⭐ 오늘 날짜는 TodayTimer(uiTime)을 사용해서 직접 덮어쓰기
+    useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsub = firestore()
+        .collection("users")
+        .doc(user.uid)
+        .onSnapshot((snap) => {
+        if (!snap.exists) return;
+        const data = snap.data();
+
+        // 오늘 날짜 key 생성
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        const key = String(parseInt(dd));
+
+        // monthStats 중 "오늘"만 업데이트
+        setMonthStats((prev) => ({
+            ...prev,
+            [key]: data.todayTotalTime ?? 0,
+        }));
+        });
+
+    return () => unsub();
+    }, [user?.uid]);
+
+
   // ============================================================
   // ✔ 유저의 과목 목록(uuid → name) 구독 — UUID → 과목명 매핑용
   // ============================================================
@@ -216,7 +245,7 @@ function Calendar() {
 
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>목표 달성 일수</Text>
-          <Text style={styles.summaryValue}>0일</Text>
+          <Text style={styles.summaryValue}>2일</Text>
         </View>
       </View>
 
