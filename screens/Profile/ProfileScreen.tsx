@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useUserContext } from '../../contexts/UserContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -6,48 +6,87 @@ import Inha from '../../assets/inha.svg';
 import NowInfo from '../../components/Profile/NowInfo';
 import DailyInfo from '../../components/Profile/DailyInfo';
 import MonthInfo from '../../components/Profile/MonthInfo';
+import firestore from '@react-native-firebase/firestore';
 
 function ProfileScreen({ navigation }) {
     const { user } = useUserContext();
     const [selectedTab, setSelectedTab] = useState('자리');
 
-    /** 좌석 코드 변환 함수 */
-    const convertSeatCode = (seatLabel) => {
-        if (!seatLabel) return "-";
+    /** ⭐ seatLabel 로컬 상태 */
+    const [mySeatLabel, setMySeatLabel] = useState("-");
 
-        const parts = seatLabel.trim().split(/\s+/); // ["제1열람실", "3번"]
-        if (parts.length < 2) return "-";
+    /** seatId → seatLabel 로딩 */
+    useEffect(() => {
+        const loadSeatLabel = async () => {
+            if (!user?.seatId) {
+                setMySeatLabel("-");
+                return;
+            }
 
-        const roomName = parts[0];
-        const seatNum = parseInt(parts[1].replace("번",""), 10);
+            const doc = await firestore()
+                .collection("seats")
+                .doc(user.seatId)
+                .get();
 
-        let roomCode = "0-0";
+            if (!doc.exists) {
+                setMySeatLabel("-");
+                return;
+            }
 
-        if (roomName === "제1열람실") roomCode = "1-1";
-        if (roomName === "제2-1열람실") roomCode = "2-1";
-        if (roomName === "제2-2열람실") roomCode = "2-2";
-        if (roomName.includes("대학원생")) roomCode = "2-2";
+            const data = doc.data();
+            setMySeatLabel(data.seatLabel ?? "-");
+        };
 
-        return `${roomCode}-${seatNum}`;
+        loadSeatLabel();
+    }, [user?.seatId]);
+
+    const formatSeatForUI = (label) => {
+        if (!label) return "-";
+
+        // "제1열람실 1번" → "1열람실 1"
+        return label
+            .replace("제", "")     // 제 제거
+            .replace("번", "")     // 번 제거
+            .trim();
     };
 
-    /** 상단 바 간단 정보 */
+    /** 상단바 간단 정보 */
     const BriefContent = () => {
+
+        const formatStudyTime = (sec) => {
+            if (!sec || sec <= 0) return "00:00";
+            const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+            const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+            return `${h}:${m}`;
+        };
+
+        const formatGoal = (min) => {
+            if (!min || min <= 0) return "00:00";
+            const h = String(Math.floor(min / 60)).padStart(2, "0");
+            const m = String(min % 60).padStart(2, "0");
+            return `${h}:${m}`;
+        };
+
+        const studyHHMM = formatStudyTime(user?.todayTotalTime);
+        const goalHHMM = formatGoal(user?.goals);
+
         return(
             <View style={styles.StateBar}>
                 <View style={styles.StateItem}>
                     <Text style={styles.StateBarLabel}>공부 시간</Text>
-                    <Text style={styles.StateBarValue}>00:00</Text>
+                    <Text style={styles.StateBarValue}>{studyHHMM}</Text>
                 </View>
+
                 <View style={styles.StateItem}>
                     <Text style={styles.StateBarLabel}>목표 시간</Text>
-                    <Text style={styles.StateBarValue}>00:00</Text>
+                    <Text style={styles.StateBarValue}>{goalHHMM}</Text>
                 </View>
+
                 <View style={styles.StateItem}>
                     <Text style={styles.StateBarLabel}>내 좌석</Text>
-                    <Text style={styles.StateBarValue}>
-                        {convertSeatCode(user?.seatLabel)}
-                    </Text>
+
+                    {/* ★ 변경: seatLabel 그대로 표시 */}
+                    <Text style={styles.StateBarValue}>{formatSeatForUI(mySeatLabel)}</Text>
                 </View>
             </View>
         );
@@ -55,17 +94,10 @@ function ProfileScreen({ navigation }) {
 
     const renderContent = () => {
         switch(selectedTab) {
-            case '자리':
-                return <NowInfo />;
-
-            case '일별':
-                return <DailyInfo />;
-
-            case '월별':
-                return <MonthInfo />;
-
-            default:
-                return null;
+            case '자리': return <NowInfo />;
+            case '일별': return <DailyInfo />;
+            case '월별': return <MonthInfo />;
+            default: return null;
         }
     };
 
@@ -73,7 +105,7 @@ function ProfileScreen({ navigation }) {
         <View style={styles.container}>
             {/* 상단 프로필 */}
             <View style={styles.header}>
-                <View style={styles.imageWrapper}>
+                <View className={styles.imageWrapper}>
                     <Inha width={67} height={67}/>
                 </View>
 
@@ -112,8 +144,7 @@ function ProfileScreen({ navigation }) {
     );
 }
 
-/* ========================= 스타일 ========================= */
-
+/* 이하 CSS 그대로 */
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: 'white' },
 

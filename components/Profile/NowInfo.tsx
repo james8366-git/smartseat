@@ -7,71 +7,58 @@ import { clearSeatStatus } from "../../lib/seats";
 
 function NowInfo() {
   const { user, setUser } = useUserContext();
+
+  const [seatLabel, setSeatLabel] = useState("-");
   const [reservedSt, setReservedSt] = useState("00:00");
   const [reservedEd, setReservedEd] = useState("00:00");
 
-  /** 좌석 Label → 좌석 문서 ID 찾기 */
-  const findSeatDocId = async (seatLabel) => {
-    if (!seatLabel) return null;
+  const [studyStart, setStudyStart] = useState("00:00"); // ⭐ 공부 시작시간
 
-    const parts = seatLabel.trim().split(/\s+/); // ["제1열람실", "3번"]
-    if (parts.length < 2) return null;
-
-    const roomName = parts[0];
-    const seatNum = parseInt(parts[1].replace("번", ""), 10);
-
-    const roomMap = {
-      "제1열람실": "11",
-      "제2-1열람실": "21",
-      "제2-2열람실": "22",
-      "제2-2열람실(대학원생전용)": "23"
-    };
-
-    const roomId = roomMap[roomName];
-    if (!roomId) return null;
-
-    const snap = await firestore()
-      .collection("seats")
-      .where("room", "==", roomId)
-      .where("seat_number", "==", seatNum)
-      .limit(1)
-      .get();
-
-    return snap.empty ? null : snap.docs[0].id;
-  };
-
-  /** 예약 시간 가져오기 */
+  /** 좌석 정보 불러오기 */
   useEffect(() => {
-    const loadSeatInfo = async () => {
+    const loadSeat = async () => {
       if (!user?.seatId) return;
 
-      const seatDocId = await findSeatDocId(user.seatId);
-      if (!seatDocId) return;
+      const snap = await firestore().collection("seats").doc(user.seatId).get();
+      if (!snap.exists) return;
 
-      const doc = await firestore().collection("seats").doc(seatDocId).get();
-      if (!doc.exists) return;
-
-      const data = doc.data();
-      setReservedSt(data.reservedSt || "00:00");
-      setReservedEd(data.reservedEd || "00:00");
+      const d = snap.data();
+      setSeatLabel(d.seatLabel ?? "-");
+      setReservedSt(d.reservedSt ?? "00:00");
+      setReservedEd(d.reservedEd ?? "00:00");
     };
 
-    loadSeatInfo();
+    loadSeat();
   }, [user?.seatId]);
 
-  /** 반납 기능 */
+  /** ⭐ 공부 시작시간(lastOccupiedAt) 표시 */
+  useEffect(() => {
+    if (!user?.lastOccupiedAt) {
+      setStudyStart("00:00");
+      return;
+    }
+
+    const date = user.lastOccupiedAt.toDate();
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+
+    setStudyStart(`${hh}:${mm}`);
+  }, [user?.lastOccupiedAt]);
+
+  /** 반납 */
   const handleReturn = async () => {
     try {
-      const seatId = user.seatId;
-      const seatDocId = await findSeatDocId(seatId);
-
-      if (seatDocId) {
-        await clearSeatStatus(seatDocId);
+      if (user.seatId) {
+        await clearSeatStatus(user.seatId); // seats/{seatId} 처리
       }
+      await clearSeat(user.uid); // user.seatId 제거
 
-      await clearSeat(user.uid);
+      setUser((prev) => ({
+        ...prev,
+        seatId: "",
+      }));
 
-      setUser((prev) => ({ ...prev, seatId: "" }));
+      setSeatLabel("-");
       setReservedSt("00:00");
       setReservedEd("00:00");
 
@@ -85,12 +72,12 @@ function NowInfo() {
   return (
     <View style={styles.contentList}>
 
-      {/* 예약 좌석 */}
+      {/* 예약좌석 */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>예약좌석</Text>
 
         <View style={styles.rightGroup}>
-          <Text style={styles.contentText}>{user?.seatId || "-"}</Text>
+          <Text style={styles.contentText}>{seatLabel}</Text>
 
           {user?.seatId ? (
             <TouchableOpacity style={styles.returnButton} onPress={handleReturn}>
@@ -100,7 +87,7 @@ function NowInfo() {
         </View>
       </View>
 
-      {/* 예약 시간 */}
+      {/* 예약시간 */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>예약시간</Text>
         <Text style={styles.contentText}>
@@ -108,25 +95,30 @@ function NowInfo() {
         </Text>
       </View>
 
-      {/* 아래 항목은 추후 Firestore 연동 예정 */}
+      {/* ⭐ 공부시작시간 */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>공부시작시간</Text>
-        <Text style={styles.contentText}>00:00</Text>
+        <Text style={styles.contentText}>{studyStart}</Text>
       </View>
 
+      {/* 공부시간 (임시) */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>공부시간</Text>
-        <Text style={styles.contentText}>00:00</Text>
+        <Text style={styles.contentText}>00:01</Text>
       </View>
 
+      {/* 쉬는시간 (임시) */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>쉬는시간</Text>
-        <Text style={styles.contentText}>00:00</Text>
+        <Text style={styles.contentText}>00:13</Text>
       </View>
     </View>
   );
 }
 
+export default NowInfo;
+
+/* CSS 그대로 */
 const styles = StyleSheet.create({
   contentList: { flex: 1 },
 
@@ -159,5 +151,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default NowInfo;
