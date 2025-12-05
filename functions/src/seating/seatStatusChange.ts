@@ -1,8 +1,4 @@
-// seatStatusChange.ts — FINAL v2 (A안 + firstStudyAt + stats.daily 지원)
-// ✔ 프론트(timer.ts)가 시간 누적 담당
-// ✔ 서버는 좌석 상태 변경 감지 + firstStudyAt 기록 + 보조 정보만 반영
-// ✔ studylogId 있는 경우 studylogs/{id} 에 보조 필드 저장
-
+// seatStatusChange.ts — FINAL v6 FIXED
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
@@ -29,66 +25,35 @@ export const seatStatusChange = onDocumentUpdated(
     const seatRef = event.data?.after.ref;
     if (!seatRef) return;
 
-    // ----------------------------------------------------------
-    // ★ CHANGED: studylogs/{id} 에서 uid 가져오기
-    // ----------------------------------------------------------
-    const studylogId = after.studylogId;
-    let uid: string | null = null;
-    let logRef = null;
-
-    if (studylogId) {
-      logRef = db.collection("studylogs").doc(studylogId);
-      const logSnap = await logRef.get();
-
-      if (logSnap.exists) {
-        uid = logSnap.data()?.uid ?? null;
-      }
-    }
-
-    /* ==============================================================
-     * Case 1) empty/none/object → occupied  (착석)
-     * =============================================================*/
+    /* ---------------------------------------
+     * empty/none/object → occupied
+     * --------------------------------------- */
     if (afterStatus === "occupied" && beforeStatus !== "occupied") {
       logger.info(`seat ${seatId}: -> occupied`);
 
-      // seats 업데이트
       await seatRef.update({
         isStudying: true,
         occupiedAt: now,
       });
 
-      // studylog 보조 필드 업데이트
-      if (logRef) {
-        await logRef.set(
-          {
-            occupiedAt: now,
-            lastSeated: now,
-          },
-          { merge: true }
-        );
-      }
-
-      // ----------------------------------------------------------
-      // ★ CHANGED: stats/{uid}/daily/{date} → firstStudyAt 기록
-      // ----------------------------------------------------------
+      // firstStudyAt 기록
+      const uid = after.uid;
       if (uid) {
-        const d = new Date();
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        const dateKey = `${yyyy}-${mm}-${dd}`;
+        const yyyy = now.toDate().getFullYear();
+        const mm = String(now.toDate().getMonth() + 1).padStart(2, "0");
+        const dd = String(now.toDate().getDate()).padStart(2, "0");
+        const dateId = `${yyyy}-${mm}-${dd}`;
 
-        const dailyRef = db
+        const statRef = db
           .collection("stats")
           .doc(uid)
           .collection("daily")
-          .doc(dateKey);
+          .doc(dateId);
 
-        const dailySnap = await dailyRef.get();
+        const statSnap = await statRef.get();
 
-        // firstStudyAt이 없는 경우에만 기록
-        if (!dailySnap.exists || !dailySnap.data()?.firstStudyAt) {
-          await dailyRef.set(
+        if (!statSnap.exists || !statSnap.data()?.firstStudyAt) {
+          await statRef.set(
             {
               firstStudyAt: now,
             },
@@ -100,9 +65,9 @@ export const seatStatusChange = onDocumentUpdated(
       return;
     }
 
-    /* ==============================================================
-     * Case 2) occupied → empty/none/object  (이탈)
-     * =============================================================*/
+    /* ---------------------------------------
+     * occupied → empty/none/object
+     * --------------------------------------- */
     if (beforeStatus === "occupied" && afterStatus !== "occupied") {
       logger.info(`seat ${seatId}: occupied -> ${afterStatus}`);
 
@@ -112,16 +77,6 @@ export const seatStatusChange = onDocumentUpdated(
         occupiedAt: null,
       });
 
-      if (logRef) {
-        await logRef.set(
-          {
-            lastSeated: now,
-          },
-          { merge: true }
-        );
-      }
-
-      // 서버는 절대 study time 누적하지 않는다!
       return;
     }
   }

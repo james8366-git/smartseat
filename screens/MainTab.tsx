@@ -6,7 +6,6 @@ import HomeStack from "./HomeStack";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import ReservationStack from "./Reservation/ReservationStack";
 import RankStack from "./Rank/RankStack";
-import RankScreen from "./Rank/RankScreen";
 import CalendarStack from "./Calendar/CalendarStack";
 import ProfileStack from "./Profile/ProfileStack";
 const Tab = createBottomTabNavigator();
@@ -77,15 +76,17 @@ function MainTab(){
                         }
                     />
                     <Tab.Screen
-                        name="Rank"
-                        component={RankScreen}
-                        options={{
-                            tabBarIcon: ({color}) => (
-                                <Icon name="bar-chart" size={24} color={color}/>
-                            )
-                        }}
-                    />
+                        name="RankStack"
+                        component={RankStack}
+                        options = {
+                            {
+                                tabBarIcon: ({color}) => (
+                                    <Icon name="bar-chart" size={24} color={color}/>
+                                )
+                            }
+                        }
 
+                    />
                     <Tab.Screen
                         name="CalendarStack"
                         component={CalendarStack}

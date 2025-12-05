@@ -1,9 +1,11 @@
 // screens/Reservation/RoomScreen.tsx
+
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import firestore from "@react-native-firebase/firestore";
+
 import SeatGrid from "../../components/Reservation/Room/SeatGrid";
 import SeatModal from "../../components/Reservation/Room/SeatModal";
-import firestore from "@react-native-firebase/firestore";
 
 function RoomScreen({ route, navigation }) {
   const { roomId, roomName } = route.params;
@@ -12,9 +14,6 @@ function RoomScreen({ route, navigation }) {
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  /* ------------------------------------------------
-   * 🔵 좌석 실시간 구독
-   * ------------------------------------------------ */
   useEffect(() => {
     if (!roomId) return;
 
@@ -35,22 +34,25 @@ function RoomScreen({ route, navigation }) {
     return () => unsubscribe();
   }, [roomId]);
 
-  /* ------------------------------------------------
-   * 🔵 좌석 클릭 처리
-   *    ❗ RoomScreen에서는 좌석 상태를 막지 않는다.
-   *    (SeatModal에서 최신 상태 검증함)
-   * ------------------------------------------------ */
   const handleSeatPress = (seat) => {
+    console.log("⚡ 좌석 클릭:", seat.id);
     setSelectedSeat(seat);
     setModalVisible(true);
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{roomName}</Text>
+    <>
+      <View style={styles.container}>
+        <Text style={styles.title}>{roomName}</Text>
 
-      <SeatGrid seats={seats} seatsPerRow={6} onSeatPress={handleSeatPress} />
+        <SeatGrid
+          seats={seats}
+          seatsPerRow={6}
+          onSeatPress={handleSeatPress}
+        />
+      </View>
 
+      {/* 🔥 항상 렌더링 — Modal은 visible로만 제어해야 Navigation 위로 뜬다 */}
       <SeatModal
         visible={modalVisible}
         seat={selectedSeat}
@@ -58,13 +60,12 @@ function RoomScreen({ route, navigation }) {
         navigation={navigation}
         onClose={() => setModalVisible(false)}
       />
-    </View>
+    </>
   );
 }
 
 export default RoomScreen;
 
-/* 🔥 CSS 그대로 유지 */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

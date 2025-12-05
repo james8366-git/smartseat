@@ -1,3 +1,5 @@
+// HomeScreen.tsx — FINAL v5 + AppState FLUSH EDITION
+
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, AppState } from "react-native";
 
@@ -8,8 +10,8 @@ import ReturnSeat from "../components/HomeScreen/ReturnSeat";
 import { useUserContext } from "../contexts/UserContext";
 import firestore from "@react-native-firebase/firestore";
 
-import { useStudyTimer } from "../components/HomeScreen/useStudyTimer";;
-import  { finishAllSessions }  from "../lib/timer";
+import { useStudyTimer } from "../components/HomeScreen/useStudyTimer";
+import { finishAllSessions } from "../lib/timer";
 
 export default function HomeScreen() {
   const { user, setUser } = useUserContext();
@@ -17,22 +19,9 @@ export default function HomeScreen() {
   const appState = useRef(AppState.currentState);
 
   const { todayUiTime, subjectTimes, seatStatus } = useStudyTimer();
-
-  /** 🔵 실시간 todayUiTime 추적 */
-  const todayUiTimeRef = useRef(0);
-  useEffect(() => {
-    todayUiTimeRef.current = todayUiTime;
-  }, [todayUiTime]);
-
-  /** 🔵 DB와 diff 계산 기준값 */
-  const lastSyncedUiTimeRef = useRef(0);
-
   const isFlushingRef = useRef(false);
 
-  /* ------------------------------------------
-   * USER SNAPSHOT
-   * 앱 재실행 시 todayUiTime을 DB 값으로 초기화 (중복 증가 완전 제거)
-   * ------------------------------------------*/
+  /* USER SNAPSHOT */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -42,54 +31,11 @@ export default function HomeScreen() {
       .onSnapshot((snap) => {
         if (!snap.exists) return;
         const data = snap.data();
-
-        /** ⭐ 앱 재실행 시 UI 타이머 초기화 */
-        if (typeof data.todayTotalTime === "number") {
-          todayUiTimeRef.current = data.todayTotalTime;
-          lastSyncedUiTimeRef.current = data.todayTotalTime;
-        }
-
         setUser((prev) => ({ ...prev, ...data }));
       });
   }, [user?.uid]);
 
-  /* ------------------------------------------
-   * todayUiTime → todayTotalTime (10초 증가 시 DB 반영)
-   * ❗ user?.uid 제거 → 중복 증가 완전 방지
-   * ------------------------------------------*/
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    const current = todayUiTimeRef.current;
-    const prev = lastSyncedUiTimeRef.current;
-
-    if (current <= prev) return;
-
-    const diff = current - prev;
-    if (diff < 10) return; // 10초 단위 업데이트
-
-    const applyIncrement = async () => {
-      try {
-        await firestore()
-          .collection("users")
-          .doc(user.uid)
-          .update({
-            todayTotalTime: firestore.FieldValue.increment(diff),
-          });
-
-        lastSyncedUiTimeRef.current = current;
-      } catch (e) {
-        console.log("todayTotalTime sync error:", e);
-      }
-    };
-
-    applyIncrement();
-  }, [todayUiTime]); // <<<<<<<< 🔥 user.uid 제거
-
-  /* ------------------------------------------
-   * SEAT SNAPSHOT
-   * 좌석 이탈 시 flush + finishAllSessions 실행
-   * ------------------------------------------*/
+  /* SEAT SNAPSHOT */
   useEffect(() => {
     if (!user?.seatId) {
       setSeatData(null);
@@ -108,34 +54,14 @@ export default function HomeScreen() {
       const leaving =
         prevStatus === "occupied" && now !== "occupied";
 
+      // 좌석 이탈 -> flush
       if (leaving && !isFlushingRef.current && user.runningSubjectSince) {
         isFlushingRef.current = true;
-
-        try {
-          /** 🔥 DB에 반영되지 않은 diff 반영 */
-          const current = todayUiTimeRef.current;
-          const prev = lastSyncedUiTimeRef.current;
-          const diff = current - prev;
-
-          if (diff > 0) {
-            await firestore()
-              .collection("users")
-              .doc(user.uid)
-              .update({
-                todayTotalTime: firestore.FieldValue.increment(diff),
-              });
-            lastSyncedUiTimeRef.current = current;
-          }
-        } catch (e) {
-          console.log("flush on seat leaving error:", e);
-        }
 
         await finishAllSessions({
           uid: user.uid,
           selectedSubject: user.selectedSubject,
           runningSubjectSince: user.runningSubjectSince,
-          seatId: user.seatId,
-          student_number: user.student_number,
         });
 
         isFlushingRef.current = false;
@@ -143,16 +69,12 @@ export default function HomeScreen() {
 
       prevStatus = now;
     });
-  }, [
-    user?.seatId,
-    user?.runningSubjectSince,
-    user?.selectedSubject,
-  ]);
+  }, [user?.seatId, user?.runningSubjectSince, user?.selectedSubject]);
 
-  /* ------------------------------------------
-   * APP STATE
-   * 앱 종료/백그라운드 진입 시 강제 flush
-   * ------------------------------------------*/
+  /* -------------------------------------------------------
+   *  APP STATE (🔥 핵심)
+   *  앱이 background 또는 quit 될 때 자동 flush
+   * ------------------------------------------------------- */
   useEffect(() => {
     const subscription = AppState.addEventListener(
       "change",
@@ -161,6 +83,7 @@ export default function HomeScreen() {
           nextState.match(/inactive|background/) &&
           appState.current === "active"
         ) {
+          // 앱이 종료되기 직전에 flush
           if (
             seatStatus === "occupied" &&
             user.runningSubjectSince &&
@@ -168,30 +91,10 @@ export default function HomeScreen() {
           ) {
             isFlushingRef.current = true;
 
-            try {
-              const current = todayUiTimeRef.current;
-              const prev = lastSyncedUiTimeRef.current;
-              const diff = current - prev;
-
-              if (diff > 0) {
-                await firestore()
-                  .collection("users")
-                  .doc(user.uid)
-                  .update({
-                    todayTotalTime: firestore.FieldValue.increment(diff),
-                  });
-                lastSyncedUiTimeRef.current = current;
-              }
-            } catch (e) {
-              console.log("flush on app background error:", e);
-            }
-
             await finishAllSessions({
               uid: user.uid,
               selectedSubject: user.selectedSubject,
               runningSubjectSince: user.runningSubjectSince,
-              seatId: user.seatId,
-              student_number: user.student_number,
             });
 
             isFlushingRef.current = false;
@@ -203,14 +106,9 @@ export default function HomeScreen() {
     );
 
     return () => subscription.remove();
-  }, [
-    seatStatus,
-    user.runningSubjectSince,
-    user.selectedSubject,
-    user?.uid,
-  ]);
+  }, [seatStatus, user.runningSubjectSince, user.selectedSubject]);
 
-  /* ------------------------------------------*/
+  /* STATUS TEXT */
   const statusText = {
     none: "",
     empty: "미착석",
@@ -234,7 +132,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-
   statusBar: {
     padding: 10,
     alignItems: "center",

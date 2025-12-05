@@ -19,5 +19,6 @@ export { reserveEnd } from "./reservation/reserveEnd";
 // export { seatIdleCheck } from "./seating/seatIdleCheck";
 export { seatStatusChange } from "./seating/seatStatusChange";
 // export {studyTimer} from "./studyTimer";
+export { syncStatsDaily } from './seating/onUserUpdated';
 export {dailyReset} from "./dailyReset";
 // export { syncSensorToSeat } from "./seating/syncSensorToSeat";

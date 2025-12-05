@@ -31,18 +31,18 @@ export const reserveEnd = onSchedule(
     logger.log(`⏱ 자동 반납 처리: ${seatId}`);
 
     // 2️⃣ studylogs 중 seatId 일치하는 가장 최근 로그 찾기
-    const logsSnap = await db
-      .collection("studylogs")
-      .where("seatId", "==", seatId)
-      .orderBy("occupiedAt", "desc")
-      .limit(1)
-      .get();
+    // const logsSnap = await db
+    //   .collection("studylogs")
+    //   .where("seatId", "==", seatId)
+    //   .orderBy("occupiedAt", "desc")
+    //   .limit(1)
+    //   .get();
 
-    if (!logsSnap.empty) {
-      await logsSnap.docs[0].ref.update({
-        lastSeated: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+    // if (!logsSnap.empty) {
+    //   await logsSnap.docs[0].ref.update({
+    //     lastSeated: admin.firestore.FieldValue.serverTimestamp(),
+    //   });
+    // }
 
     // 3️⃣ 이 좌석을 사용한 user 찾기
     const userSnap = await db

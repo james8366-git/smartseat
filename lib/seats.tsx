@@ -66,7 +66,7 @@ export async function reserveSeat({
 
   const seatRef = db.collection('seats').doc(seatDocId);
   const userRef = db.collection('users').doc(user.uid);
-  const studyRef = db.collection('studylogs').doc();
+//   const studyRef = db.collection('studylogs').doc();
 
   await db.runTransaction(async (tx) => {
     const [seatSnap, userSnap] = await Promise.all([
@@ -100,7 +100,7 @@ export async function reserveSeat({
       lastSeated: now,
       occupiedAt: now,
       seatLabel,
-      studylogId: studyRef.id,
+    //   studylogId: studyRef.id,
     });
 
     tx.update(userRef, {
@@ -109,22 +109,22 @@ export async function reserveSeat({
     } );
 
     // ⭐ 새 로그 문서를 생성
-    tx.set(studyRef, {
-      uid: user.uid,
-      seatId: seatDocId,
-      lastSeated: null,
-      occupiedAt: null,
-      student_number: user.student_number,
-      totalTime: 0,
-      createdAt: now,   // 🔥 추가 (로그 정렬용)
-      studylogId: studyRef.id,
-      subject: [
-        {
-          subjectName: user.selectedSubject,
-          studyTime: 0,
-        },
-      ],
-    });
+    // tx.set(studyRef, {
+    //   uid: user.uid,
+    //   seatId: seatDocId,
+    //   lastSeated: null,
+    //   occupiedAt: null,
+    //   student_number: user.student_number,
+    //   totalTime: 0,
+    //   createdAt: now,   // 🔥 추가 (로그 정렬용)
+    //   studylogId: studyRef.id,
+    //   subject: [
+    //     {
+    //       subjectName: user.selectedSubject,
+    //       studyTime: 0,
+    //     },
+    //   ],
+    // });
   });
 }
 
