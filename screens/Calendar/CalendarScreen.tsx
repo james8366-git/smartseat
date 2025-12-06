@@ -17,20 +17,26 @@ import firestore from "@react-native-firebase/firestore";
 import { useUserContext } from "../../contexts/UserContext";
 
 function Calendar() {
-  const today = new Date();
-  const { user } = useUserContext();
+    const today = new Date();
+    const { user } = useUserContext();
 
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth() + 1);
+    const [year, setYear] = useState(today.getFullYear());
+    const [month, setMonth] = useState(today.getMonth() + 1);
 
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [showModal, setShowModal] = useState(false);
 
-  const [monthStats, setMonthStats] = useState({});
-  const [dailyDetail, setDailyDetail] = useState(null);
+    const [monthStats, setMonthStats] = useState({});
+    const [dailyDetail, setDailyDetail] = useState(null);
 
-  // 🔥 추가된 부분
-  const [subjectMap, setSubjectMap] = useState({}); // { uuid: {name, time} }
+    // 🔥 추가된 부분
+    const [subjectMap, setSubjectMap] = useState({}); // { uuid: {name, time} }
+
+    const safeDaily = (data) => ({
+        dailyTotalTime: data?.dailyTotalTime ?? 0,
+        subjects: data?.subjects ?? {},
+        firstStudyAt: data?.firstStudyAt ?? null,
+    });
 
     // ⭐ 오늘 날짜는 TodayTimer(uiTime)을 사용해서 직접 덮어쓰기
     useEffect(() => {
@@ -119,39 +125,26 @@ function Calendar() {
   // ============================================================
   // ✔ 날짜 클릭 → 상세 데이터 불러오기
   // ============================================================
-  const handlePressDate = async (day) => {
-    setSelectedDate(day);
-    setShowModal(true);
+    const handlePressDate = async (day) => {
+        setSelectedDate(day);
+        setShowModal(true);
 
-    const yyyy = year;
-    const mm = String(month).padStart(2, "0");
-    const dd = String(day).padStart(2, "0");
-    const docId = `${yyyy}-${mm}-${dd}`;
+        const yyyy = year;
+        const mm = String(month).padStart(2, "0");
+        const dd = String(day).padStart(2, "0");
+        const docId = `${yyyy}-${mm}-${dd}`;
 
-    const snap = await firestore()
-      .collection("stats")
-      .doc(user.uid)
-      .collection("daily")
-      .doc(docId)
-      .get();
+        const snap = await firestore()
+        .collection("stats")
+        .doc(user.uid)
+        .collection("daily")
+        .doc(docId)
+        .get();
 
-    if (!snap.exists) {
-      setDailyDetail({
-        total: 0,
-        subjects: {},
-        firstStudyAt: null,
-      });
-      return;
+        const data = snap.exists ? snap.data() : null;
+        setDailyDetail(safeDaily(data));
     }
-
-    const data = snap.data();
-
-    setDailyDetail({
-      total: data.dailyTotalTime ?? 0,
-      subjects: data.subjects ?? {},
-      firstStudyAt: data.firstStudyAt ?? null,
-    });
-  };
+  
 
   // ============================================================
   // ✔ UUID → 과목명 변환
@@ -180,24 +173,41 @@ function Calendar() {
   // ============================================================
   // ✔ 시간 포맷
   // ============================================================
-  const formatHM = (sec) => {
-    if (!sec || sec <= 0) return "00:00";
-    const totalMin = Math.floor(sec / 60);
-    const h = String(Math.floor(totalMin / 60)).padStart(2, "0");
-    const m = String(totalMin % 60).padStart(2, "0");
-    return `${h}:${m}`;
-  };
+    const formatHM = (sec) => {
+        if (!sec || sec <= 0) return "00:00";
+        const totalMin = Math.floor(sec / 60);
+        const h = String(Math.floor(totalMin / 60)).padStart(2, "0");
+        const m = String(totalMin % 60).padStart(2, "0");
+        return `${h}:${m}`;
+    };
+
+    const formatHMS = (sec) => {
+    if (!sec || sec <= 0) return "00:00:00";
+
+    const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+    const s = String(sec % 60).padStart(2, "0");
+
+    return `${h}:${m}:${s}`;
+    };
 
   // ============================================================
   // ✔ 월 평균 시간
   // ============================================================
-  const calcMonthlyAverage = () => {
-    const vals = Object.values(monthStats);
-    if (vals.length === 0) return "00:00";
+    const calcMonthlyAverage = () => {
+    if (!monthStats) return "00:00";
 
-    const sum = vals.reduce((a, b) => a + b, 0);
-    return formatHM(Math.floor(sum / vals.length));
-  };
+    const todayDate = new Date().getDate(); // 오늘이 6일이면 6
+    let sum = 0;
+
+    for (let day = 1; day <= todayDate; day++) {
+        const key = String(day);
+        sum += monthStats[key] ?? 0;  // 없으면 0으로 처리
+    }
+
+    const avg = sum / todayDate;
+    return formatHM(avg);
+    };
 
   // 달력 데이터 구성
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -297,7 +307,7 @@ function Calendar() {
 
             {dailyDetail && (
               <ScrollView style={{ width: "100%" }}>
-                <Text>총 공부시간: {formatHM(dailyDetail.total)}</Text>
+                <Text>총 공부시간: {formatHMS(dailyDetail.dailyTotalTime)}</Text>
 
                 <Text style={{ marginTop: 10, fontWeight: "600" }}>
                   과목별 공부시간
@@ -305,7 +315,7 @@ function Calendar() {
 
                 {convertSubjects(dailyDetail.subjects).map((item) => (
                   <Text key={item.name}>
-                    {item.name}: {formatHM(item.sec)}
+                    {item.name}: {formatHMS(item.sec)}
                   </Text>
                 ))}
 
@@ -322,7 +332,7 @@ function Calendar() {
                     })()}
                   </Text>
                 ) : (
-                  <Text>-</Text>
+                  <Text>시작 안함</Text>
                 )}
               </ScrollView>
             )}

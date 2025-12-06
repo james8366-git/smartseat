@@ -28,11 +28,19 @@ function SignUpScreen({ navigation }) {
     department: 'none',   // 🔥 default를 none으로 (undefined 방지)
     goals: 0,
     seatId: '',
-    reservelog: [],
+    seatLabel: '',
+    runningSubjectSince: '',
+    selectedSubject: '',
+    lastOccupiedAt: '',
     isadmin: false,
     todayTotalTime: 0,
     pomodoro: "",
-    subject: ["공부"],
+    subject:  {
+        base: {
+            name:'공부',
+            time: 0,
+        },
+    },
   });
 
   const [duplicateValid, setDuplicateValid] = useState({

@@ -20,10 +20,12 @@ function NowInfo() {
       if (!user?.seatId) return;
 
       const snap = await firestore().collection("seats").doc(user.seatId).get();
-      if (!snap.exists) return;
+      if (!snap.exists){
+        setSeatLabel("-");
+        return;
+      }
 
       const d = snap.data();
-      setSeatLabel(d.seatLabel ?? "-");
       setReservedSt(d.reservedSt ?? "00:00");
       setReservedEd(d.reservedEd ?? "00:00");
     };

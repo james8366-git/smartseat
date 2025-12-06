@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native';
 import { useUserContext } from '../../contexts/UserContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Inha from '../../assets/inha.svg';
 import NowInfo from '../../components/Profile/NowInfo';
 import DailyInfo from '../../components/Profile/DailyInfo';
 import MonthInfo from '../../components/Profile/MonthInfo';
@@ -105,8 +104,12 @@ function ProfileScreen({ navigation }) {
         <View style={styles.container}>
             {/* 상단 프로필 */}
             <View style={styles.header}>
-                <View className={styles.imageWrapper}>
-                    <Inha width={67} height={67}/>
+                <View style={styles.imageWrapper}>
+                    <Image
+                        source={require('../../assets/inha.png')}
+                        style={{ width: 67, height: 67 }}
+                        resizeMode="contain"
+                    />
                 </View>
 
                 <View style={styles.infoContainer}>

@@ -1,29 +1,114 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import firestore from "@react-native-firebase/firestore";
+import { useUserContext } from "../../contexts/UserContext";
 
 function MonthInfo() {
+    const { user } = useUserContext();
     const today = new Date();
+
     const [year, setYear] = useState(today.getFullYear());
     const [month, setMonth] = useState(today.getMonth() + 1);
     const [showModal, setShowModal] = useState(false);
 
+    // 🔥 월간 데이터 저장 ( { "1": 3600, "2":0, ... } )
+    const [monthData, setMonthData] = useState({});  
+
+    // 🔥 포맷 (HH:MM)
+    const formatHM_KR = (sec) => {
+    if (!sec || sec <= 0) return "0시간 0분";
+    
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+
+    return `${h}시간 ${m}분`;
+    };
+
+    /* ========================================================
+       🔥 월 데이터 Firestore 불러오기
+       ======================================================== */
+    useEffect(() => {
+        if (!user?.uid) return;
+        
+        const fetchMonth = async () => {
+            const mm = String(month).padStart(2, "0");
+            const yyyy = year;
+
+            const first = `${yyyy}-${mm}-01`;
+            const last  = `${yyyy}-${mm}-31`;
+
+            const snap = await firestore()
+              .collection("stats")
+              .doc(user.uid)
+              .collection("daily")
+              .where(firestore.FieldPath.documentId(), ">=", first)
+              .where(firestore.FieldPath.documentId(), "<=", last)
+              .get();
+
+            const temp = {};
+            snap.forEach(doc => {
+                const id = doc.id;
+                const day = parseInt(id.split("-")[2]);
+                temp[day] = doc.data()?.dailyTotalTime ?? 0;
+            });
+
+            setMonthData(temp);
+        };
+
+        fetchMonth();
+    }, [user?.uid, year, month]);
+
+    /* ========================================================
+       ✔ 월 공부시간 합계
+       ======================================================== */
+        const calcMonthlyTotal = () => {
+            const sum = Object.values(monthData).reduce((a, b) => a + b, 0);
+            return formatHM_KR(sum);   // HH시간 MM분
+        };
+
+
+    /* ========================================================
+       ✔ 연속 공부일수 (오늘 제외)
+       ======================================================== */
+    const calcStreak = () => {
+        const todayDate = today.getDate();
+        let streak = 0;
+
+        for (let d = todayDate - 1; d >= 1; d--) {
+            const sec = monthData[d] ?? 0;
+            if (sec > 0) streak++;
+            else break;
+        }
+        return `${streak}일`;
+    };
+
+    /* ========================================================
+       ✔ 하루 최다 공부시간
+       ======================================================== */
+    const calcMaxDay = () => {
+        const arr = Object.values(monthData);
+        if (arr.length === 0) return "00:00";
+
+        const max = Math.max(...arr);
+        return formatHM_KR(max);
+    };
+
+    /* ========================================================
+       UI / Month Selector 기능
+       ======================================================== */
     const handlePrevMonth = () => {
         if (month === 1) {
             setMonth(12);
             setYear(prev => prev - 1);
-        } else {
-            setMonth(prev => prev - 1);
-        }
+        } else setMonth(prev => prev - 1);
     };
 
     const handleNextMonth = () => {
         if (month === 12) {
             setMonth(1);
             setYear(prev => prev + 1);
-        } else {
-            setMonth(prev => prev + 1);
-        }
+        } else setMonth(prev => prev + 1);
     };
 
     const openModal = () => setShowModal(true);
@@ -40,15 +125,14 @@ function MonthInfo() {
 
     return (
         <View style={styles.container}>
+
             <View style={styles.monthBar}>
                 <TouchableOpacity onPress={handlePrevMonth}>
                     <Icon name="chevron-left" size={28} color="#333" />
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={openModal}>
-                    <Text style={styles.monthText}>
-                        {`${year}.${month}`}
-                    </Text>
+                    <Text style={styles.monthText}>{`${year}.${month}`}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={handleNextMonth}>
@@ -56,21 +140,25 @@ function MonthInfo() {
                 </TouchableOpacity>
             </View>
 
+            {/* 🔥 실제 계산 결과 표시 */}
             <View style={styles.listBox}>
                 <View style={styles.row}>
                     <Text style={styles.title}>월 공부 시간</Text>
-                    <Text style={styles.value}>00:00</Text>
+                    <Text style={styles.value}>{calcMonthlyTotal()}</Text>
                 </View>
+
                 <View style={styles.row}>
                     <Text style={styles.title}>연속 공부일수</Text>
-                    <Text style={styles.value}>00:00</Text>
+                    <Text style={styles.value}>{calcStreak()}</Text>
                 </View>
+
                 <View style={styles.row}>
                     <Text style={styles.title}>하루 최다 공부시간</Text>
-                    <Text style={styles.value}>00:00</Text>
+                    <Text style={styles.value}>{calcMaxDay()}</Text>
                 </View>
             </View>
 
+            {/* 년/월 선택 모달 */}
             <Modal visible={showModal} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalBox}>
@@ -82,6 +170,7 @@ function MonthInfo() {
                             renderItem={({ item: y }) => (
                                 <View style={styles.yearSection}>
                                     <Text style={styles.yearLabel}>{y}년</Text>
+
                                     <View style={styles.monthGrid}>
                                         {months.map((m) => (
                                             <TouchableOpacity
@@ -113,9 +202,12 @@ function MonthInfo() {
                     </View>
                 </View>
             </Modal>
+
         </View>
     );
 }
+
+export default MonthInfo;
 
 const styles = StyleSheet.create({
     container: { 

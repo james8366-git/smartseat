@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useUserContext } from "../contexts/UserContext";
 import { subscribeAuth } from "../lib/auth";
 import { getUser } from "../lib/users";
+import firestore from "@react-native-firebase/firestore";
 
 import SignInScreen from "./Sign/SignInScreen";
 import SignUpScreen from "./Sign/SignUpScreen";
@@ -39,18 +40,32 @@ export default function RootStack() {
   const { user, setUser } = useUserContext();
   const [initializing, setInitializing] = useState(true);
 
-  useEffect(() => {
-    const unsub = subscribeAuth(async (currentUser) => {
-      if (currentUser) {
-        const profile = await getUser(currentUser.uid);
-        setUser(profile ?? null);
-      } else {
-        setUser(null);
-      }
-      setInitializing(false);
-    });
-    return unsub;
-  }, []);
+    useEffect(() => {
+        const unsub = subscribeAuth(async (currentUser) => {
+        if (currentUser) {
+            const profile = await getUser(currentUser.uid);
+            setUser(profile ?? null);
+        } else {
+            setUser(null);
+        }
+        setInitializing(false);
+        });
+        return unsub;
+    }, []);
+
+    useEffect(() => {
+    if (!user?.uid) return;
+
+    const userRef = firestore().collection("users").doc(user.uid);
+
+    // 오늘 stat.daily 생성을 위한 dummy write
+    userRef.set(
+        {
+            lastOpenedAt: firestore.FieldValue.serverTimestamp()
+        },
+        { merge: true }
+    );
+    }, [user?.uid]);
 
   if (initializing) {
     return (

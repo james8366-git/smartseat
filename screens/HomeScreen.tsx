@@ -31,6 +31,15 @@ export default function HomeScreen() {
       .onSnapshot((snap) => {
         if (!snap.exists) return;
         const data = snap.data();
+
+        if (!data.selectedSubject || !data.subject?.[data.selectedSubject]) {
+            firestore()
+            .collection("users")
+            .doc(user.uid)
+            .update({
+                selectedSubject: "base",
+            });
+        }
         setUser((prev) => ({ ...prev, ...data }));
       });
   }, [user?.uid]);

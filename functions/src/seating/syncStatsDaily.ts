@@ -23,29 +23,30 @@ export const syncStatsDaily = onDocumentUpdated(
     const dateId = `${yyyy}-${mm}-${dd}`;
 
     const statRef = db.collection("stats").doc(uid).collection("daily").doc(dateId);
+    const statSnap = await statRef.get();
 
-    // ⭐ subjects 저장 — 타입 명시 FIX
-    if (after.subject) {
-      const subjectSecs: Record<string, number> = {};
-
-      Object.entries(after.subject).forEach(([id, s]: any) => {
-        subjectSecs[id] = s?.time ?? 0;
+    // 🔵 문서가 없으면 최초 1회 기본값 생성
+    if (!statSnap.exists) {
+      await statRef.set({
+        dailyTotalTime: 0,
+        subjects: {},
       });
-
-      await statRef.set(
-        {
-          subjects: subjectSecs,
-        },
-        { merge: true }
-      );
     }
 
-    // ⭐ todayTotalTime 저장
-    if (typeof after.todayTotalTime === "number") {
+    // 🔵 subjects 변할 때만 저장
+    if (JSON.stringify(before?.subject) !== JSON.stringify(after.subject)) {
+      const subjectSecs: Record<string, number> = {};
+      Object.entries(after.subject ?? {}).forEach(([id, s]: any) => {
+        subjectSecs[id] = s?.time ?? 0; // 그대로 초로 저장
+      });
+
+      await statRef.set({ subjects: subjectSecs }, { merge: true });
+    }
+
+    // 🔵 todayTotalTime 변할 때만 저장
+    if (before?.todayTotalTime !== after.todayTotalTime) {
       await statRef.set(
-        {
-          dailyTotalTime: after.todayTotalTime * 60,
-        },
+        { dailyTotalTime: after.todayTotalTime },
         { merge: true }
       );
     }
