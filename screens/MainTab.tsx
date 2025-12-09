@@ -1,20 +1,26 @@
 import React from "react";
-import { StyleSheet, View} from "react-native";
+import { StyleSheet, View, Platform, PixelRatio} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import { useUserContext } from "../contexts/UserContext";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeStack from "./HomeStack";
 import Icon from 'react-native-vector-icons/MaterialIcons';
+
 import ReservationStack from "./Reservation/ReservationStack";
 import RankStack from "./Rank/RankStack";
 import CalendarStack from "./Calendar/CalendarStack";
 import ProfileStack from "./Profile/ProfileStack";
+
 const Tab = createBottomTabNavigator();
 
 function MainTab(){
     const {user} = useUserContext();
 
+    const ICONSIZE = Math.round(24 * PixelRatio.getFontScale());
+
     return(
-        <>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["bottom"]}>
             <View style={styles.block}>
                 <Tab.Navigator
                     screenOptions={
@@ -27,8 +33,8 @@ function MainTab(){
                                 backgroundColor: '#FFFFFF',
                                 borderTopWidth: 0.5,
                                 borderTopColor: '#E0E0E0',
-                                height: 60,
-                                paddingBottom: 6,
+                                paddingBottom: Platform.OS === 'ios' ? 20 : 6,
+                                height: Platform.OS === 'ios' ? 80 : 60,
                                 paddingTop: 6,
                             },
                         }
@@ -41,7 +47,7 @@ function MainTab(){
                         options={
                             {
                                 tabBarIcon: ({color}) => (
-                                    <Icon name="home" size={24} color={color}/>
+                                    <Icon name="home" size={ICONSIZE} color={color}/>
                                 ),
                             }
                         }
@@ -54,7 +60,7 @@ function MainTab(){
                             tabBarIcon: (
                                 { color }) => 
                                 (
-                                    <Icon name="chair-alt" size={24} color={color} />
+                                    <Icon name="chair-alt" size={ICONSIZE} color={color} />
                                 ),
                             }
                         }
@@ -81,7 +87,7 @@ function MainTab(){
                         options = {
                             {
                                 tabBarIcon: ({color}) => (
-                                    <Icon name="bar-chart" size={24} color={color}/>
+                                    <Icon name="bar-chart" size={ICONSIZE} color={color}/>
                                 )
                             }
                         }
@@ -93,7 +99,7 @@ function MainTab(){
                         options = {
                             {
                                 tabBarIcon: ({color}) => (
-                                    <Icon name="calendar-today" size={24} color={color}/>
+                                    <Icon name="calendar-today" size={ICONSIZE} color={color}/>
                                 )
                             }
                         }
@@ -105,7 +111,7 @@ function MainTab(){
                         options = {
                             {
                                 tabBarIcon: ({color}) => (
-                                    <Icon name="account-circle" size={24} color={color}/>
+                                    <Icon name="account-circle" size={ICONSIZE} color={color}/>
                                 )
                             }
                         }
@@ -128,7 +134,7 @@ function MainTab(){
                     />
                 </Tab.Navigator>
             </View>       
-        </>
+        </SafeAreaView>
 
 
     )
@@ -137,7 +143,6 @@ function MainTab(){
 const styles = StyleSheet.create({
     block:{
         flex: 1,
-        zIndex: 0,
     },
 
     text:{

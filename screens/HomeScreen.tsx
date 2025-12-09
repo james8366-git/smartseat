@@ -1,7 +1,8 @@
-// HomeScreen.tsx — FINAL v5 + AppState FLUSH EDITION
+// HomeScreen.tsx — FINAL v7 (10초 자동 flush 포함)
 
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, AppState } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import TodayTimer from "../components/HomeScreen/TodayTimer";
 import StudyList from "../components/HomeScreen/StudyList";
@@ -21,7 +22,9 @@ export default function HomeScreen() {
   const { todayUiTime, subjectTimes, seatStatus } = useStudyTimer();
   const isFlushingRef = useRef(false);
 
-  /* USER SNAPSHOT */
+  /* ---------------------------------------------------
+   * USER SNAPSHOT
+   * --------------------------------------------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -32,19 +35,23 @@ export default function HomeScreen() {
         if (!snap.exists) return;
         const data = snap.data();
 
+        // 선택 과목 없으면 base로 교정
         if (!data.selectedSubject || !data.subject?.[data.selectedSubject]) {
-            firestore()
+          firestore()
             .collection("users")
             .doc(user.uid)
             .update({
-                selectedSubject: "base",
+              selectedSubject: "base",
             });
         }
+
         setUser((prev) => ({ ...prev, ...data }));
       });
   }, [user?.uid]);
 
-  /* SEAT SNAPSHOT */
+  /* ---------------------------------------------------
+   * SEAT SNAPSHOT
+   * --------------------------------------------------- */
   useEffect(() => {
     if (!user?.seatId) {
       setSeatData(null);
@@ -56,14 +63,14 @@ export default function HomeScreen() {
 
     return seatRef.onSnapshot(async (snap) => {
       if (!snap.exists) return;
+
       const data = snap.data();
       setSeatData(data);
 
       const now = data.status;
-      const leaving =
-        prevStatus === "occupied" && now !== "occupied";
+      const leaving = prevStatus === "occupied" && now !== "occupied";
 
-      // 좌석 이탈 -> flush
+      // 좌석 떠날 때 flush
       if (leaving && !isFlushingRef.current && user.runningSubjectSince) {
         isFlushingRef.current = true;
 
@@ -80,44 +87,74 @@ export default function HomeScreen() {
     });
   }, [user?.seatId, user?.runningSubjectSince, user?.selectedSubject]);
 
-  /* -------------------------------------------------------
-   *  APP STATE (🔥 핵심)
-   *  앱이 background 또는 quit 될 때 자동 flush
-   * ------------------------------------------------------- */
+  /* ---------------------------------------------------
+   * APP STATE FLUSH (백그라운드 이동)
+   * --------------------------------------------------- */
   useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      async (nextState) => {
+    const subscription = AppState.addEventListener("change", async (nextState) => {
+      if (
+        nextState.match(/inactive|background/) &&
+        appState.current === "active"
+      ) {
         if (
-          nextState.match(/inactive|background/) &&
-          appState.current === "active"
+          seatStatus === "occupied" &&
+          user.runningSubjectSince &&
+          !isFlushingRef.current
         ) {
-          // 앱이 종료되기 직전에 flush
-          if (
-            seatStatus === "occupied" &&
-            user.runningSubjectSince &&
-            !isFlushingRef.current
-          ) {
-            isFlushingRef.current = true;
+          isFlushingRef.current = true;
 
-            await finishAllSessions({
-              uid: user.uid,
-              selectedSubject: user.selectedSubject,
-              runningSubjectSince: user.runningSubjectSince,
-            });
+          await finishAllSessions({
+            uid: user.uid,
+            selectedSubject: user.selectedSubject,
+            runningSubjectSince: user.runningSubjectSince,
+          });
 
-            isFlushingRef.current = false;
-          }
+          isFlushingRef.current = false;
         }
-
-        appState.current = nextState;
       }
-    );
+
+      appState.current = nextState;
+    });
 
     return () => subscription.remove();
   }, [seatStatus, user.runningSubjectSince, user.selectedSubject]);
 
-  /* STATUS TEXT */
+  /* ---------------------------------------------------
+   * ⭐ 10초마다 자동 flush → RankScreen 실시간 반영
+   * --------------------------------------------------- */
+  useEffect(() => {
+    if (!user?.uid || seatStatus !== "occupied" || !user.runningSubjectSince)
+      return;
+
+    const interval = setInterval(async () => {
+      if (isFlushingRef.current) return;
+
+      isFlushingRef.current = true;
+
+      // 1) flush
+      await finishAllSessions({
+        uid: user.uid,
+        selectedSubject: user.selectedSubject,
+        runningSubjectSince: user.runningSubjectSince,
+      });
+
+      // 2) flush 후 즉시 runningSubjectSince 재시작 (UI 끊김 방지)
+      await firestore()
+        .collection("users")
+        .doc(user.uid)
+        .update({
+          runningSubjectSince: firestore.Timestamp.now(),
+        });
+
+      isFlushingRef.current = false;
+    }, 10000); // 🔥 10초마다 실행
+
+    return () => clearInterval(interval);
+  }, [seatStatus, user?.runningSubjectSince, user?.selectedSubject]);
+
+  /* ---------------------------------------------------
+   * STATUS TEXT
+   * --------------------------------------------------- */
   const statusText = {
     none: "",
     empty: "미착석",
@@ -125,22 +162,25 @@ export default function HomeScreen() {
     object: "물건!",
   }[seatStatus];
 
+  /* ---------------------------------------------------
+   * RENDER
+   * --------------------------------------------------- */
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.statusBar}>
         <Text style={styles.statusText}>{statusText}</Text>
       </View>
 
       <TodayTimer uiTime={todayUiTime} />
       <ReturnSeat user={user} seatData={seatData} />
-
       <StudyList subjectTimes={subjectTimes} seatStatus={seatStatus} />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+
   statusBar: {
     padding: 10,
     alignItems: "center",
@@ -148,6 +188,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#ddd",
   },
+
   statusText: {
     fontSize: 16,
     fontWeight: "600",

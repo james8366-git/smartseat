@@ -1,6 +1,9 @@
-// screens/Rank/RankScreen.tsx
+// RankScreen — SAFEAREA 안정화 완전체
+
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import TotalRanking from "../../components/RankScreen/TotalRanking";
 import DeptRanking from "../../components/RankScreen/DeptRanking";
 
@@ -8,56 +11,60 @@ function RankScreen() {
   const [selectedTab, setSelectedTab] = useState("전체 랭킹");
 
   return (
-    <View style={styles.container}>
-      {/* 탭 */}
-      <View style={styles.tabContainer}>
-        {["전체 랭킹", "학과 랭킹"].map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tabItem,
-              selectedTab === tab && styles.activeTab,
-            ]}
-            onPress={() => setSelectedTab(tab)}
-          >
-            <Text
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top"]}>
+      <View style={styles.container}>
+
+        {/* 탭 */}
+        <View style={styles.tabContainer}>
+          {["전체 랭킹", "학과 랭킹"].map((tab) => (
+            <TouchableOpacity
+              key={tab}
               style={[
-                styles.tabText,
-                selectedTab === tab && styles.activeTabText,
+                styles.tabItem,
+                selectedTab === tab && styles.activeTab,
               ]}
+              onPress={() => setSelectedTab(tab)}
             >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={{ flex: 1 }}>
-
-        {/* 전체 랭킹 (항상 렌더됨) */}
-        <View
-          style={
-            selectedTab === "전체 랭킹"
-              ? styles.shown
-              : styles.hidden
-          }
-        >
-          <TotalRanking />
+              <Text
+                style={[
+                  styles.tabText,
+                  selectedTab === tab && styles.activeTabText,
+                ]}
+              >
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* 학과 랭킹 (항상 렌더됨) */}
-        <View
-          style={
-            selectedTab === "학과 랭킹"
-              ? styles.shown
-              : styles.hidden
-          }
-        >
-          <DeptRanking />
-        </View>
+        {/* 콘텐츠 */}
+        <View style={{ flex: 1 }}>
 
+          {/* 전체 랭킹 (항상 렌더됨) */}
+          <View
+            style={
+              selectedTab === "전체 랭킹"
+                ? styles.shown
+                : styles.hidden
+            }
+          >
+            <TotalRanking />
+          </View>
+
+          {/* 학과 랭킹 (항상 렌더됨) */}
+          <View
+            style={
+              selectedTab === "학과 랭킹"
+                ? styles.shown
+                : styles.hidden
+            }
+          >
+            <DeptRanking />
+          </View>
+
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -86,7 +93,6 @@ const styles = StyleSheet.create({
   },
   activeTabText: { color: "#4D8CEB", fontWeight: "bold" },
 
-  // 핵심
   shown: {
     flex: 1,
   },

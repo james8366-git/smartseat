@@ -17,12 +17,17 @@ export async function getSeatsByRoom(roomId) {
 
 /** 방(roomId) 기준 좌석 수 */
 export async function getSeatCountByRoom(roomId: string) {
-  const snapshot = await firestore()
-    .collection('seats')
-    .where('room', '==', roomId)
-    .get();
+  const seats = await getSeatsByRoom(roomId);
 
-  return snapshot.size;
+  const total = seats.length;
+
+  // none = 사용 가능 자리
+  const available = seats.filter((s) => s.status === "none").length;
+
+  // 나머지는 모두 예약된 자리
+  const reserved = total - available;
+
+  return { total, available, reserved };
 }
 
 /** roomId → 한글 열람실 이름 */

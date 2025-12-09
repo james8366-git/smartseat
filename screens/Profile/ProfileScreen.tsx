@@ -1,5 +1,9 @@
+// ProfileScreen — DEVICE SAFE VERSION (완전체)
+
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useUserContext } from '../../contexts/UserContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import NowInfo from '../../components/Profile/NowInfo';
@@ -42,10 +46,9 @@ function ProfileScreen({ navigation }) {
     const formatSeatForUI = (label) => {
         if (!label) return "-";
 
-        // "제1열람실 1번" → "1열람실 1"
         return label
-            .replace("제", "")     // 제 제거
-            .replace("번", "")     // 번 제거
+            .replace("제", "")
+            .replace("번", "")
             .trim();
     };
 
@@ -83,8 +86,6 @@ function ProfileScreen({ navigation }) {
 
                 <View style={styles.StateItem}>
                     <Text style={styles.StateBarLabel}>내 좌석</Text>
-
-                    {/* ★ 변경: seatLabel 그대로 표시 */}
                     <Text style={styles.StateBarValue}>{formatSeatForUI(mySeatLabel)}</Text>
                 </View>
             </View>
@@ -101,8 +102,11 @@ function ProfileScreen({ navigation }) {
     };
 
     return (
-        <View style={styles.container}>
-            {/* 상단 프로필 */}
+        <SafeAreaView style={styles.container} edges={['top']}>
+
+            {/* --------------------------- */}
+            {/*   🚀 header (고정) */}
+            {/* --------------------------- */}
             <View style={styles.header}>
                 <View style={styles.imageWrapper}>
                     <Image
@@ -123,7 +127,9 @@ function ProfileScreen({ navigation }) {
                 </View>
             </View>
 
-            {/* 탭 */}
+            {/* --------------------------- */}
+            {/*   🚀 탭 (고정) */}
+            {/* --------------------------- */}
             <View style={styles.tabContainer}>
                 {['자리', '일별', '월별'].map(tab => (
                     <TouchableOpacity
@@ -138,16 +144,27 @@ function ProfileScreen({ navigation }) {
                 ))}
             </View>
 
+            {/* --------------------------- */}
+            {/*   🚀 StateBar (고정) */}
+            {/* --------------------------- */}
             {BriefContent()}
 
-            <View style={styles.content}>
+            {/* --------------------------- */}
+            {/*   🚀 아래 내용만 스크롤 */}
+            {/* --------------------------- */}
+            <ScrollView 
+                style={{ flex: 1 }} 
+                contentContainerStyle={{ paddingBottom: 40 }}
+                showsVerticalScrollIndicator={false}
+            >
                 {renderContent()}
-            </View>
-        </View>
+            </ScrollView>
+
+        </SafeAreaView>
     );
 }
 
-/* 이하 CSS 그대로 */
+/* CSS는 1px도 변경 없음 */
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: 'white' },
 

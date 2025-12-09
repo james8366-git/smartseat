@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { ActivityIndicator } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useUserContext } from "../contexts/UserContext";
 import { subscribeAuth } from "../lib/auth";
 import { getUser } from "../lib/users";
 import firestore from "@react-native-firebase/firestore";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import SignInScreen from "./Sign/SignInScreen";
 import SignUpScreen from "./Sign/SignUpScreen";
@@ -69,16 +70,16 @@ export default function RootStack() {
 
   if (initializing) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#5A8DEE" />
-      </View>
+    <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }} edges={["top", "bottom"]}>
+      <ActivityIndicator size="large" color="#5A8DEE" />
+    </SafeAreaView>
     );
   }
 
   // 🔥 핵심: 인증 여부에 따라 전체 네비게이터를 교체함
-  if (!user) {
-    return <AuthStack />;
-  }
-
-  return <AppStack isadmin={user.isadmin} />;
+    return (
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+            {!user ? <AuthStack /> : <AppStack isadmin={user.isadmin} />}
+        </SafeAreaView>
+    );
 }

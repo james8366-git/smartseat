@@ -1,7 +1,8 @@
-// screens/Reservation/RoomScreen.tsx
+// RoomScreen — SAFEAREA + MODAL STABILITY (완전체)
 
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import firestore from "@react-native-firebase/firestore";
 
 import SeatGrid from "../../components/Reservation/Room/SeatGrid";
@@ -17,7 +18,7 @@ function RoomScreen({ route, navigation }) {
   useEffect(() => {
     if (!roomId) return;
 
-    const unsubscribe = firestore()
+    const unsub = firestore()
       .collection("seats")
       .where("room", "==", roomId)
       .onSnapshot((snapshot) => {
@@ -31,20 +32,21 @@ function RoomScreen({ route, navigation }) {
         setSeats(seatList);
       });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, [roomId]);
 
   const handleSeatPress = (seat) => {
-    console.log("⚡ 좌석 클릭:", seat.id);
     setSelectedSeat(seat);
     setModalVisible(true);
   };
 
   return (
-    <>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
+      
+      {/* 화면 본문 */}
       <View style={styles.container}>
         <Text style={styles.title}>{roomName}</Text>
-
+        
         <SeatGrid
           seats={seats}
           seatsPerRow={6}
@@ -52,7 +54,7 @@ function RoomScreen({ route, navigation }) {
         />
       </View>
 
-      {/* 🔥 항상 렌더링 — Modal은 visible로만 제어해야 Navigation 위로 뜬다 */}
+      {/* 항상 렌더링되는 Modal → SafeAreaView sibling이 가장 안전함 */}
       <SeatModal
         visible={modalVisible}
         seat={selectedSeat}
@@ -60,7 +62,8 @@ function RoomScreen({ route, navigation }) {
         navigation={navigation}
         onClose={() => setModalVisible(false)}
       />
-    </>
+
+    </SafeAreaView>
   );
 }
 

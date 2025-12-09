@@ -1,63 +1,52 @@
-import React, { useState } from 'react';
+// components/Sign/DuplicateCheck.tsx
+
+import React, { useState } from "react";
 import {
   TouchableOpacity,
   Text,
-  StyleSheet,
   ActivityIndicator,
+  StyleSheet,
   Alert,
-} from 'react-native';
-import { checkDuplicateUser } from '../../lib/users';
+} from "react-native";
+import firestore from "@react-native-firebase/firestore";
 
-function DuplicateCheck({ type, value, onValid }) {
+export default function DuplicateCheck({ type, value, onValid }) {
   const [loading, setLoading] = useState(false);
 
   const handleCheck = async () => {
-    if (!value.trim()) {
-      Alert.alert(
-        '입력 오류',
-        `${type === 'student_number' ? '학번' : '닉네임'}을 입력하세요.`
-      );
+    if (!value || value.trim().length === 0) {
+      Alert.alert("오류", "값을 입력해주세요.");
       return;
     }
 
-    try {
-      setLoading(true);
-      const isDuplicate = await checkDuplicateUser(type, value);
+    setLoading(true);
 
-      if (isDuplicate) {
-        Alert.alert(
-          '중복',
-          type === 'student_number'
-            ? '이미 사용 중인 학번입니다.'
-            : '이미 사용 중인 닉네임입니다.'
-        );
-        onValid(false);
+    try {
+      const snap = await firestore()
+        .collection("users")
+        .where(type, "==", value)
+        .get();
+
+      const exists = !snap.empty;
+      onValid(!exists);
+
+      if (exists) {
+        Alert.alert("중복 확인", "이미 사용 중입니다.");
       } else {
-        Alert.alert(
-          '확인 완료',
-          type === 'student_number'
-            ? '사용 가능한 학번입니다!'
-            : '사용 가능한 닉네임입니다!'
-        );
-        onValid(true);
+        Alert.alert("사용 가능", "사용 가능한 값입니다.");
       }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('오류', '중복 확인 중 문제가 발생했습니다.');
-      onValid(false);
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      Alert.alert("오류", "중복 확인 중 문제가 발생했습니다.");
+      console.log("DuplicateCheck ERROR:", e);
     }
+
+    setLoading(false);
   };
 
   return (
-    <TouchableOpacity
-      style={styles.button}
-      onPress={handleCheck}
-      disabled={loading}
-    >
+    <TouchableOpacity style={styles.button} onPress={handleCheck}>
       {loading ? (
-        <ActivityIndicator size="small" color="#000" />
+        <ActivityIndicator size="small" color="#005bac" />
       ) : (
         <Text style={styles.text}>중복확인</Text>
       )}
@@ -67,18 +56,19 @@ function DuplicateCheck({ type, value, onValid }) {
 
 const styles = StyleSheet.create({
   button: {
+    height: 48,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: '#005bac',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 4,
-    backgroundColor: '#E8F0FE',
+    borderColor: "#005bac",
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E8F0FE",
   },
   text: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#005bac',
+    fontWeight: "600",
+    color: "#005bac",
+    fontSize: 15,
+    lineHeight: 18,
   },
 });
-
-export default DuplicateCheck;
