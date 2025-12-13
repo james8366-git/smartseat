@@ -19,6 +19,7 @@ import { createUser } from '../../lib/users';
 import checkSignUpError from '../../components/Sign/CheckSignUpError';
 import DuplicateCheck from '../../components/Sign/DuplicateCheck';
 import { Picker } from '@react-native-picker/picker';
+import firestore from "@react-native-firebase/firestore";
 import auth from '@react-native-firebase/auth';
 
 function SignUpScreen({ navigation }) {
@@ -30,11 +31,10 @@ function SignUpScreen({ navigation }) {
     nickname: '',
     department: 'none',
     goals: 0,
+    goalNotified: false,
     seatId: '',
     seatLabel: '',
-    runningSubjectSince: '',
     selectedSubject: '',
-    lastOccupiedAt: '',
     isadmin: false,
     todayTotalTime: 0,
     pomodoro: "",
@@ -63,6 +63,18 @@ function SignUpScreen({ navigation }) {
     const email = `${String(form.student_number).trim()}@inha.edu`;
 
     try {
+
+        const snap = await firestore()
+            .collection("users")
+            .where("student_number", "==", form.student_number)
+            .get();
+
+        if (!snap.empty) {
+            Alert.alert("오류", "이미 가입된 학번입니다. 다시 입력해주세요.");
+            return;
+        }
+
+
       const result = await signUp({ email, password: form.password });
 
       if (!result?.user) {

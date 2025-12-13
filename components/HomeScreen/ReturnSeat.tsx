@@ -1,77 +1,37 @@
-// ReturnSeat.tsx — FULL FINAL with Confirm
-
-import React, { useRef } from "react";
+import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import firestore from "@react-native-firebase/firestore";
-import { finishAllSessions } from "../../lib/timer";
+import { returnSeatTransaction } from "../../lib/seats";
 
 export default function ReturnSeat({ user, seatData }) {
-  const uid = user?.uid;
-  const isFlushingRef = useRef(false);
-
-  /* ---------------------------------------------------
-   * 실제 반납 처리 (Confirm 이후 실행)
-   * --------------------------------------------------- */
-  const reallyReturn = async () => {
-    if (!user?.seatId) return;
-
-    const seatRef = firestore().collection("seats").doc(user.seatId);
-    const userRef = firestore().collection("users").doc(user.uid);
-
-    try {
-      // 즉시 타이머 정지
-      await userRef.update({
-        runningSubjectSince: null,
-      });
-
-      // flush
-      if (user.selectedSubject && user.runningSubjectSince && !isFlushingRef.current) {
-        isFlushingRef.current = true;
-
-        await finishAllSessions({
-          uid,
-          selectedSubject: user.selectedSubject,
-          runningSubjectSince: user.runningSubjectSince,
-        });
-
-        isFlushingRef.current = false;
-      }
-
-      // 좌석 초기화
-      await seatRef.update({
-        status: "none",
-        reservedSt: "",
-        reservedEd: "",
-        student_number: "",
-        studylogId: "",
-        isStudying: false,
-        occupiedAt: null,
-        lastSeated: null,
-      });
-
-      // user 초기화
-      await userRef.update({
-        seatId: null,
-        runningSubjectSince: null,
-      });
-
-      Alert.alert("반납 완료", "좌석이 정상적으로 반납되었습니다.");
-    } catch (e) {
-      console.log("❌ ReturnSeat ERROR:", e);
-      Alert.alert("에러", "반납 처리 중 문제가 발생했습니다.");
-    }
-  };
-
-  /* ---------------------------------------------------
-   * Confirm 알람
-   * --------------------------------------------------- */
   const handleReturn = () => {
     Alert.alert(
       "좌석 반납",
       "정말 좌석을 반납하시겠습니까?",
       [
         { text: "취소", style: "cancel" },
-        { text: "반납", style: "destructive", onPress: reallyReturn }
+        {
+          text: "반납",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (!user?.uid || !user?.seatId) return;
+
+              await returnSeatTransaction({
+                uid: user.uid,
+                seatId: user.seatId,
+                selectedSubject: user.selectedSubject,
+              });
+
+              Alert.alert(
+                "반납 완료",
+                "해당 시점까지의 공부시간이 저장되었습니다."
+              );
+            } catch (e) {
+              console.log("❌ ReturnSeat ERROR:", e);
+              Alert.alert("에러", "반납 처리 중 문제가 발생했습니다.");
+            }
+          },
+        },
       ]
     );
   };

@@ -69,19 +69,29 @@ function MonthInfo() {
 
 
     /* ========================================================
-       ✔ 연속 공부일수 (오늘 제외)
-       ======================================================== */
-    const calcStreak = () => {
-        const todayDate = today.getDate();
-        let streak = 0;
+    ✔ 한 달 전체 중 가장 긴 연속 공부일수
+    ======================================================== */
+    const calcMaxStreak = () => {
+    const days = Object.keys(monthData)
+        .map(Number)
+        .sort((a, b) => a - b); // 날짜 순 정렬
 
-        for (let d = todayDate - 1; d >= 1; d--) {
-            const sec = monthData[d] ?? 0;
-            if (sec > 0) streak++;
-            else break;
+    let maxStreak = 0;
+    let currentStreak = 0;
+
+    for (const d of days) {
+        const sec = monthData[d] ?? 0;
+        if (sec > 0) {
+        currentStreak++;
+        maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+        currentStreak = 0; // 끊김
         }
-        return `${streak}일`;
+    }
+
+    return `${maxStreak}일`;
     };
+
 
     /* ========================================================
        ✔ 하루 최다 공부시간
@@ -148,8 +158,8 @@ function MonthInfo() {
                 </View>
 
                 <View style={styles.row}>
-                    <Text style={styles.title}>연속 공부일수</Text>
-                    <Text style={styles.value}>{calcStreak()}</Text>
+                    <Text style={styles.title}>최대연속 공부일수</Text>
+                    <Text style={styles.value}>{calcMaxStreak()}</Text>
                 </View>
 
                 <View style={styles.row}>

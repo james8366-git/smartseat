@@ -104,9 +104,6 @@ function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* 🔥 포모도로 타이머 (분리 컴포넌트) */}
-      <Pomodoro />
-
       {/* 로그아웃 */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>로그아웃</Text>

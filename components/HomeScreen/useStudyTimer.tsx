@@ -1,23 +1,31 @@
-// useStudyTimer.tsx — FINAL PATCH VERSION (FULL CODE)
-// ✔ 과목 삭제 시 TodayTimer 오차 증가 버그 해결
-// ✔ runningSubjectSince=null 되는 순간 UI 시간을 DB 기준으로 리셋
-
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import firestore from "@react-native-firebase/firestore";
 import { useUserContext } from "../../contexts/UserContext";
 
 export function useStudyTimer() {
   const { user } = useUserContext();
 
-  const [seatStatus, setSeatStatus] = useState("empty");
-  const [subjectTimesState, setSubjectTimesState] = useState({});
+  const [seatStatus, setSeatStatus] =
+    useState<"empty" | "occupied" | "none" | "object">("empty");
+
+  /** DB 확정값 */
+  const [dbSubjectTimes, setDbSubjectTimes] =
+    useState<Record<string, number>>({});
+
+  /** UI 표시값 */
+  const [displaySubjectTimes, setDisplaySubjectTimes] =
+    useState<Record<string, number>>({});
+
+  const [lastFlushedAt, setLastFlushedAt] =
+    useState<FirebaseFirestoreTypes.Timestamp | null>(null);
 
   /* --------------------------------------------------
-   * 좌석 상태 실시간 구독
+   * seats 구독 (상태 + lastFlushedAt)
    * -------------------------------------------------- */
   useEffect(() => {
     if (!user?.seatId) {
       setSeatStatus("empty");
+      setLastFlushedAt(null);
       return;
     }
 
@@ -25,132 +33,86 @@ export function useStudyTimer() {
       .collection("seats")
       .doc(user.seatId)
       .onSnapshot((snap) => {
+        if (!snap.exists) {
+          setSeatStatus("empty");
+          setLastFlushedAt(null);
+          return;
+        }
+
         const d = snap.data();
         setSeatStatus(d?.status ?? "empty");
+        setLastFlushedAt(d?.lastFlushedAt ?? null);
       });
   }, [user?.seatId]);
 
   /* --------------------------------------------------
-   * occupied → runningSubjectSince 시작
-   * -------------------------------------------------- */
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    if (seatStatus === "occupied" && !user.runningSubjectSince) {
-      firestore()
-        .collection("users")
-        .doc(user.uid)
-        .update({
-          runningSubjectSince: firestore.Timestamp.now(),
-        });
-    }
-  }, [seatStatus, user?.uid, user?.runningSubjectSince]);
-
-  /* --------------------------------------------------
-   * empty/object/none → runningSubjectSince 종료
-   * -------------------------------------------------- */
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    if (seatStatus !== "occupied" && user.runningSubjectSince) {
-      firestore().collection("users").doc(user.uid).update({
-        runningSubjectSince: null,
-      });
-    }
-  }, [seatStatus, user?.uid, user?.runningSubjectSince]);
-
-  /* --------------------------------------------------
-   * tick (UI diff 계산)
-   * -------------------------------------------------- */
-  const isActive =
-    seatStatus === "occupied" && !!user?.runningSubjectSince;
-
-  const [tick, setTick] = useState(0);
-  const intervalRef = useRef(null);
-
-  useEffect(() => {
-    if (isActive && !intervalRef.current) {
-      intervalRef.current = setInterval(() => setTick((t) => t + 1), 1000);
-    }
-
-    if (!isActive && intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    };
-  }, [isActive]);
-
-  /* --------------------------------------------------
-   * Firestore subject.time → 로컬 초기 반영
+   * users.subject (DB 기준값 반영)
    * -------------------------------------------------- */
   useEffect(() => {
     if (!user?.subject) return;
 
-    setSubjectTimesState(() => {
-      const next = {};
-      Object.entries(user.subject).forEach(([id, s]) => {
-        next[id] = s.time ?? 0;
-      });
-      return next;
+    const next: Record<string, number> = {};
+    Object.entries(user.subject).forEach(([id, s]: any) => {
+      next[id] = s.time ?? 0;
     });
+
+    setDbSubjectTimes(next);
+
+    // 기본적으로 UI는 DB 값 그대로
+    setDisplaySubjectTimes(next);
   }, [user?.subject]);
 
   /* --------------------------------------------------
-   * ⭐ 핵심 FIX
-   * runningSubjectSince === null (즉, 삭제/반납/이탈) → UI 시간 강제 초기화
+   * occupied 상태에서만 UI 보간 (DB + diff)
    * -------------------------------------------------- */
   useEffect(() => {
-    if (!user?.runningSubjectSince) {
-      if (!user?.subject) return;
+    if (
+      seatStatus !== "occupied" ||
+      !lastFlushedAt ||
+      !user?.selectedSubject
+    )
+      return;
 
-      // DB 기준으로 즉시 리셋
-      setSubjectTimesState(() => {
-        const next = {};
-        Object.entries(user.subject).forEach(([id, s]) => {
-          next[id] = s.time ?? 0;
-        });
-        return next;
-      });
-    }
-  }, [user?.runningSubjectSince]);  // ← 핵심
+    const id = setInterval(() => {
+      const diff = Math.floor(
+        (Date.now() - lastFlushedAt.toDate().getTime()) / 1000
+      );
 
-  /* --------------------------------------------------
-   * Active diff 계산 → UI 시간 증가
-   * -------------------------------------------------- */
-  useEffect(() => {
-    if (!isActive) return;
+      if (diff <= 0) return;
 
-    const subjectId = user.selectedSubject;
-    const since = user.runningSubjectSince;
-    if (!subjectId || !since) return;
-
-    const start = since.toDate().getTime() / 1000;
-    const nowSec = Date.now() / 1000;
-    const diff = Math.max(0, Math.floor(nowSec - start));
-
-    setSubjectTimesState((prev) => {
-      const base = user.subject?.[subjectId]?.time ?? 0;
-      return {
+      setDisplaySubjectTimes((prev) => ({
         ...prev,
-        [subjectId]: base + diff,
-      };
-    });
-  }, [tick, isActive, user?.subject, user?.runningSubjectSince]);
+        [user.selectedSubject]:
+          (dbSubjectTimes[user.selectedSubject] ?? 0) + diff,
+      }));
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [
+    seatStatus,
+    lastFlushedAt,
+    user?.selectedSubject,
+    dbSubjectTimes,
+  ]);
 
   /* --------------------------------------------------
-   * Today Total
+   * Today Total (UI 기준)
    * -------------------------------------------------- */
   const todayUiTime = useMemo(() => {
-    return Object.values(subjectTimesState).reduce((a, b) => a + b, 0);
-  }, [subjectTimesState]);
+    return Object.values(displaySubjectTimes).reduce(
+      (a, b) => a + b,
+      0
+    );
+  }, [displaySubjectTimes]);
 
   return {
-    subjectTimes: subjectTimesState,
-    todayUiTime,
     seatStatus,
+
+    /** UI용 */
+    subjectTimes: displaySubjectTimes,
+    todayUiTime,
+
+    /** DB 확정값 */
+    dbSubjectTimes,
   };
 }

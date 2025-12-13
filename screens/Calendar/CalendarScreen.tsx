@@ -28,6 +28,8 @@ function Calendar() {
   const [monthStats, setMonthStats] = useState({});
   const [dailyDetail, setDailyDetail] = useState(null);
 
+  const [goalAchievedDays, setGoalAchievedDays] = useState(0);
+
   const [subjectMap, setSubjectMap] = useState({});
 
   const safeDaily = (data) => ({
@@ -47,7 +49,12 @@ function Calendar() {
         if (!snap.exists) return;
         const data = snap.data();
 
-        const today = new Date();
+      const now = new Date();
+      const nowYear = now.getFullYear();
+      const nowMonth = now.getMonth() + 1;
+
+      // ⭐ 보고 있는 달이 '이번 달'일 때만 반영
+      if (year !== nowYear || month !== nowMonth) return;
         const dd = String(today.getDate());
         setMonthStats((prev) => ({
           ...prev,
@@ -91,14 +98,23 @@ function Calendar() {
         .where(firestore.FieldPath.documentId(), "<=", lastDate)
         .get();
 
-      const data = {};
+      const data: any = {};
+      let achievedCount = 0;   // ⭐ 추가
       snap.forEach((doc) => {
         const parts = doc.id.split("-");
         const day = String(parseInt(parts[2]));
-        data[day] = doc.data()?.dailyTotalTime ?? 0;
+
+        const daily = doc.data();
+        data[day] = daily.dailyTotalTime ?? 0;
+
+        // ⭐ goalNotified 카운트 (없으면 false 취급)
+      if (daily?.goalNotified === true) {
+        achievedCount += 1;
+      }
       });
 
       setMonthStats(data);
+      setGoalAchievedDays(achievedCount);   // ⭐ 추가
     };
 
     fetchMonth();
@@ -122,13 +138,16 @@ function Calendar() {
     setDailyDetail(safeDaily(doc.exists ? doc.data() : null));
   };
 
-  const convertSubjects = (map) => {
-    if (!map) return [];
-    return Object.entries(map).map(([uuid, sec]) => ({
-      name: subjectMap[uuid]?.name ?? uuid,
-      sec,
-    }));
-  };
+    const convertSubjects = (map) => {
+    if (!map || !subjectMap) return [];
+
+    return Object.entries(map)
+        .filter(([uuid]) => !!subjectMap[uuid]) // ⭐ 존재하는 과목만
+        .map(([uuid, sec]) => ({
+        name: subjectMap[uuid].name,
+        sec,
+        }));
+    };
 
   const getColorByTime = (time) => {
     if (time >= 600 * 60) return "#72A6F3";
@@ -154,12 +173,18 @@ function Calendar() {
     return `${h}:${m}:${s}`;
   };
 
-  const calcMonthlyAverage = () => {
-    const today = new Date().getDate();
-    let sum = 0;
-    for (let d = 1; d <= today; d++) sum += monthStats[String(d)] ?? 0;
-    return formatHM(sum / today);
-  };
+    const calcMonthlyAverage = () => {
+    const values = Object.values(monthStats)
+        .filter((sec) => sec > 0); // 0보다 큰 day만 채택
+
+    if (values.length === 0) return "00:00";
+
+    const sum = values.reduce((a, b) => a + b, 0);
+    const avg = Math.floor(sum / values.length);
+
+    return formatHM(avg);
+    };
+
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -208,18 +233,18 @@ function Calendar() {
 
             <View style={styles.summaryBox}>
               <View style={styles.summaryItem}>
-                <Text className={styles.summaryLabel}>하루 평균 공부 시간</Text>
+                <Text style={styles.summaryLabel}>하루 평균 공부 시간</Text>
                 <Text style={styles.summaryValue}>{calcMonthlyAverage()}</Text>
               </View>
 
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabel}>목표 달성 일수</Text>
-                <Text style={styles.summaryValue}>2일</Text>
+                <Text style={styles.summaryValue}>{goalAchievedDays}일</Text>
               </View>
             </View>
 
             <View style={styles.weekRow}>
-              {["SUN", "MON", "TUE", "WED", "THU", "FRRI", "SAT"].map(
+              {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(
                 (w, i) => (
                   <Text
                     key={i}
@@ -349,10 +374,11 @@ const styles = StyleSheet.create({
   summaryBox: {
     flexDirection: "row",
     justifyContent: "space-around",
-    width: "90%",
+    alignSelf: 'center',
+    width: "100%",
     marginBottom: 10,
   },
-  summaryItem: { alignItems: "center" },
+  summaryItem: { flex: 1, alignItems: "center" },
   summaryLabel: { fontSize: 14, color: "#666", marginBottom: 4 },
   summaryValue: { fontSize: 16, fontWeight: "600", color: "#555" },
   weekRow: {

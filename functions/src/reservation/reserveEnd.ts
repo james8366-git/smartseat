@@ -59,13 +59,13 @@ export const reserveEnd = onSchedule(
 
     // 4️⃣ seats 문서 초기화
     await doc.ref.set({
-    status: "none",
-    reservedSt: "",
-    reservedEd: "",
-    student_number: "",
-    occupiedAt: null,
-    lastSeated: null,
-    studylogId: admin.firestore.FieldValue.delete(),
+        status: "none",
+        reservedSt: "",
+        reservedEd: "",
+        student_number: "",
+        occupiedAt: null,
+        lastSeated: null,
+        
     }, { merge: true });
 
     logger.log(`✔ 자동 반납 완료: ${seatId}`);

@@ -16,11 +16,16 @@ export const syncStatsDaily = onDocumentUpdated(
 
     if (!after) return;
 
-    const now = admin.firestore.Timestamp.now();
-    const yyyy = now.toDate().getFullYear();
-    const mm = String(now.toDate().getMonth() + 1).padStart(2, "0");
-    const dd = String(now.toDate().getDate()).padStart(2, "0");
+    // ✨ 한국시간(KST)으로 날짜 계산
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+
+    const yyyy = kst.getFullYear();
+    const mm = String(kst.getMonth() + 1).padStart(2, "0");
+    const dd = String(kst.getDate()).padStart(2, "0");
+
     const dateId = `${yyyy}-${mm}-${dd}`;
+
 
     const statRef = db.collection("stats").doc(uid).collection("daily").doc(dateId);
     const statSnap = await statRef.get();
@@ -30,6 +35,7 @@ export const syncStatsDaily = onDocumentUpdated(
       await statRef.set({
         dailyTotalTime: 0,
         subjects: {},
+        firstStudyAt: null,
       });
     }
 

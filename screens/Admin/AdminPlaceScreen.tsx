@@ -1,52 +1,27 @@
-import React, { useState } from "react";
-import { View, StyleSheet, Text, TouchableOpacity } from "react-native";
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import TabBar from '../../components/Reservation/Place/TabBar';
+import AdminRoomList from '../../components/Admin/Place/AdminRoomList';
 
 function AdminPlaceScreen({ navigation }) {
-  const places = [
-    { id: "11", name: "제1열람실" },
-    { id: "12", name: "제2열람실" },
-  ];
+  const [selectedTab, setSelectedTab] = useState('reading_room');
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>일반열람실</Text>
-      <View style={styles.separator} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <TabBar selectedTab={selectedTab} onSelect={setSelectedTab} />
 
-      {places.map((room) => (
-        <TouchableOpacity
-          key={room.id}
-          style={styles.item}
-          onPress={() =>
-            navigation.navigate("AdminRoomScreen", {
-              roomId: room.id,
-              roomName: room.name,
-            })
-          }
-        >
-          <Text style={styles.itemText}>{room.name}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+        <View style={styles.separator} />
+
+      <AdminRoomList selectedTab={selectedTab} navigation={navigation} />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF", padding: 16 },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#5A8DEE",
-    marginBottom: 6,
-  },
-  separator: { height: 1, backgroundColor: "#DADADA", marginBottom: 16 },
-  item: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderColor: "#EFEFEF",
-  },
-  itemText: {
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  separator: { height: 1, backgroundColor: '#DADADA' },
 });
 
 export default AdminPlaceScreen;

@@ -105,6 +105,7 @@ export async function reserveSeat({
       lastSeated: now,
       occupiedAt: now,
       seatLabel,
+      uid: user.uid,
     //   studylogId: studyRef.id,
     });
 
@@ -142,3 +143,79 @@ export const clearSeatStatus = async (seatDocId: string) => {
     student_number: "",
   });
 };
+
+
+/**
+ * 좌석 반납 트랜잭션
+ * - lastFlushedAt 기준 diff 계산
+ * - subject.time / todayTotalTime 반영
+ * - seat / user 상태 정리
+ */
+export async function returnSeatTransaction({
+  uid,
+  seatId,
+  selectedSubject,
+}: {
+  uid: string;
+  seatId: string;
+  selectedSubject: string;
+}) {
+  const db = firestore();
+
+  const seatRef = db.collection("seats").doc(seatId);
+  const userRef = db.collection("users").doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const seatSnap = await tx.get(seatRef);
+    if (!seatSnap.exists) return;
+
+    const seat = seatSnap.data();
+    const lastFlushedAt = seat?.lastFlushedAt;
+
+    /* -----------------------------
+     * 1) 잔여 시간 확정
+     * ----------------------------- */
+    if (selectedSubject && lastFlushedAt) {
+      const now = firestore.Timestamp.now();
+
+      const diff = Math.max(
+        0,
+        Math.floor(
+          (now.toDate().getTime() -
+            lastFlushedAt.toDate().getTime()) / 1000
+        )
+      );
+
+      if (diff > 0) {
+        tx.update(userRef, {
+          [`subject.${selectedSubject}.time`]:
+            firestore.FieldValue.increment(diff),
+          todayTotalTime:
+            firestore.FieldValue.increment(diff),
+        });
+      }
+    }
+
+    /* -----------------------------
+     * 2) 좌석 상태 초기화
+     * ----------------------------- */
+    tx.update(seatRef, {
+      status: "none",
+      reservedSt: "",
+      reservedEd: "",
+      student_number: "",
+      studylogId: "",
+      isStudying: false,
+      occupiedAt: null,
+      lastFlushedAt: null,
+      lastSeated: firestore.Timestamp.now(),
+    });
+
+    /* -----------------------------
+     * 3) user 상태 초기화
+     * ----------------------------- */
+    tx.update(userRef, {
+      seatId: null,
+    });
+  });
+}

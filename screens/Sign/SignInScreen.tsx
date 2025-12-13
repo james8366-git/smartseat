@@ -14,6 +14,9 @@ import { getUser } from '../../lib/users';
 import { useUserContext } from '../../contexts/UserContext';
 import PWFind from '../../components/Sign/PWFind';
 
+import saveAdminToken from '../../src/saveAdminToken';
+import saveUserToken from '../../src/saveUserToken';
+
 function SignInScreen({ navigation }) {
   const [studentNumber, setStudentNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +45,27 @@ function SignInScreen({ navigation }) {
       }
 
       setUser(profile);
+
+
+      //관리자 FCM 토큰 저장
+      if (profile.isadmin === true) {
+        try {
+          await saveAdminToken(user.uid);
+        } catch (e) {
+          console.log("관리자 토큰 저장 실패:", e);
+        }
+      }
+
+      //사용자 FCM 토큰 저장
+      if (profile.isadmin === false) {
+        try {
+          await saveUserToken(user.uid);
+        } catch (e) {
+          console.log("사용자 토큰 저장 실패:", e);
+        }
+      }
+
+
     } catch (e) {
       console.log(e);
       Alert.alert('로그인 실패', '학번 또는 비밀번호가 올바르지 않습니다.');

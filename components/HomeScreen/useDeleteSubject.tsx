@@ -35,7 +35,6 @@ export default function useDeleteSubject(subjects, setSubjects) {
       await userRef.update({
         subject: newSubjectMap,
         selectedSubject: deletingSelected ? "base" : user.selectedSubject,
-        runningSubjectSince: null,   // 🔥 타이머 완전 종료 (핵심)
       });
 
       // 🔥 2) todayTotalTime 재계산
@@ -46,7 +45,6 @@ export default function useDeleteSubject(subjects, setSubjects) {
 
       // 🔥 4) 유저 상태 즉시 업데이트 (프론트 타이머 diff 즉시 종료)
       user.selectedSubject = deletingSelected ? "base" : user.selectedSubject;
-      user.runningSubjectSince = null;
 
       Alert.alert("삭제 완료", "과목이 삭제되었습니다.");
     } catch (e) {

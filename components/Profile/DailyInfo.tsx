@@ -6,52 +6,58 @@ import {
   Text,
   Modal,
   FlatList,
-  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import DatePicker from "react-native-date-picker";   // ★ RN20 호환
 import firestore from "@react-native-firebase/firestore";
 import { useUserContext } from "../../contexts/UserContext";
 
 function DailyInfo() {
   const { user } = useUserContext();
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  /* ===============================
+   * 날짜 상태
+   * =============================== */
+  const todayDate = new Date();
+  const [viewDate, setViewDate] = useState(new Date());
 
+  const getDateKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayKey = getDateKey(todayDate);
+  const viewKey = getDateKey(viewDate);
+  const isToday = todayKey === viewKey;
+  const displayDate = viewKey.replace(/-/g, ".");
+
+  /* ===============================
+   * 🔒 Timestamp / Date 방어 변환
+   * =============================== */
+  const safeToDate = (ts: any): Date | null => {
+    if (!ts) return null;
+    if (ts instanceof Date) return ts;
+    if (typeof ts.toDate === "function") return ts.toDate();
+    return null;
+  };
+
+  /* ===============================
+   * 목표 시간
+   * =============================== */
   const [targetTime, setTargetTime] = useState("00:00");
   const [goalMinutes, setGoalMinutes] = useState(0);
-
   const [showTimeModal, setShowTimeModal] = useState(false);
 
+  /* ===============================
+   * 선택일 데이터
+   * =============================== */
   const [todayStudyMin, setTodayStudyMin] = useState(0);
+  const [startTimeText, setStartTimeText] = useState("00:00");
 
-  // 시간 선택 리스트
-  const timeOptions = [];
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 30) {
-      timeOptions.push(
-        `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
-      );
-    }
-  }
-
-  const formatDate = (date: Date) =>
-    `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
-
-  const handlePrevDay = () =>
-    setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1));
-
-  const handleNextDay = () =>
-    setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1));
-
-  const openDatePicker = () => setShowDatePicker(true);
-  const closeDatePicker = () => setShowDatePicker(false);
-
-  const openTimeModal = () => setShowTimeModal(true);
-  const closeTimeModal = () => setShowTimeModal(false);
-
-  // 🔥 목표 시간 Firestore 실시간 반영
+  /* ===============================
+   * users 목표 시간 로드 (기존 유지)
+   * =============================== */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -59,86 +65,154 @@ function DailyInfo() {
       .collection("users")
       .doc(user.uid)
       .onSnapshot((doc) => {
-        if (doc.exists) {
-          const g = doc.data().goals || 0;
-          setGoalMinutes(g);
+        if (!doc.exists) return;
 
-          const h = Math.floor(g / 60).toString().padStart(2, "0");
-          const m = (g % 60).toString().padStart(2, "0");
-          setTargetTime(`${h}:${m}`);
-        }
+        const g = doc.data().goals || 0;
+        setGoalMinutes(g);
+
+        const h = String(Math.floor(g / 60)).padStart(2, "0");
+        const m = String(g % 60).padStart(2, "0");
+        setTargetTime(`${h}:${m}`);
       });
 
     return () => unsub();
   }, [user?.uid]);
 
-  // 🔥 목표 시간 선택
+  /* ===============================
+   * 목표 시간 저장 (오늘만 가능)
+   * =============================== */
   const selectTime = async (time: string) => {
+    if (!isToday) return;
+
     setTargetTime(time);
-    closeTimeModal();
+    setShowTimeModal(false);
 
     const [h, m] = time.split(":").map(Number);
     const total = h * 60 + m;
-
     setGoalMinutes(total);
 
-    try {
-      await firestore().collection("users").doc(user.uid).update({
-        goals: total,
-      });
-    } catch (e) {
-      console.log("목표 시간 저장 오류:", e);
-      Alert.alert("오류", "목표 시간을 저장할 수 없습니다.");
-    }
+    await firestore()
+      .collection("users")
+      .doc(user.uid)
+      .update({ goals: total });
+  };
+
+  /* ===============================
+   * stats 구독 (선택한 날짜 기준)
+   * =============================== */
+    useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsub = firestore()
+        .collection("stats")
+        .doc(user.uid)
+        .collection("daily")
+        .doc(viewKey)
+        .onSnapshot((doc) => {
+        if (!doc.exists) {
+            setTodayStudyMin(0);
+            setStartTimeText("00:00");
+            return;
+        }
+
+        const data = doc.data();
+
+        // 공부 시간
+        const studySec = data.dailyTotalTime ?? 0;
+        setTodayStudyMin(Math.floor(studySec / 60));
+
+        // 공부 시작 시간
+        const ts = data.firstStudyAt;
+        if (!ts) {
+            setStartTimeText("00:00");
+            return;
+        }
+
+        const d = safeToDate(ts);
+        if (!d) {
+            setStartTimeText("00:00");
+            return;
+        }
+
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        setStartTimeText(`${hh}:${mm}`);
+        });
+
+    return () => unsub();
+    }, [user?.uid, viewKey]);
+
+
+  /* ===============================
+   * 날짜 이동
+   * =============================== */
+  const moveDay = (diff: number) => {
+    const next = new Date(viewDate);
+    next.setDate(next.getDate() + diff);
+
+    if (getDateKey(next) > todayKey) return; // 미래 차단
+    setViewDate(next);
   };
 
   const progressPercent =
-    goalMinutes === 0 ? 0 : Math.min(todayStudyMin / goalMinutes, 1) * 100;
+    goalMinutes === 0
+      ? 0
+      : Math.min(todayStudyMin / goalMinutes, 1) * 100;
 
+  /* ===============================
+   * UI
+   * =============================== */
   return (
     <View style={styles.contentList}>
-
-      {/* 날짜 선택 */}
+      {/* 날짜 바 */}
       <View style={styles.dateBar}>
-        <TouchableOpacity onPress={handlePrevDay}>
-          <Icon name="chevron-left" size={28} color="#333" />
+        <TouchableOpacity onPress={() => moveDay(-1)}>
+          <Icon name="chevron-left" size={28} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={openDatePicker}>
-          <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-        </TouchableOpacity>
+        <Text style={styles.dateText}>{displayDate}</Text>
 
-        <TouchableOpacity onPress={handleNextDay}>
-          <Icon name="chevron-right" size={28} color="#333" />
+        <TouchableOpacity disabled={isToday} onPress={() => moveDay(1)}>
+          <Icon
+            name="chevron-right"
+            size={28}
+            color={isToday ? "#ccc" : "#333"}
+          />
         </TouchableOpacity>
       </View>
 
-      {/* 공부시작시간 */}
+      {/* 공부 시작 시간 */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>공부시작시간</Text>
-        <Text style={styles.contentText}>00:00</Text>
+        <Text style={styles.contentText}>{startTimeText}</Text>
       </View>
 
-      {/* 목표시간 */}
+      {/* 목표 시간 */}
       <View style={styles.contentBox}>
         <Text style={styles.contentTitle}>목표 시간</Text>
-
         <View style={styles.rightGroup}>
           <Text style={styles.contentText}>{targetTime}</Text>
-          <TouchableOpacity onPress={openTimeModal}>
-            <Icon name="arrow-drop-down" size={28} color="#333" />
-          </TouchableOpacity>
+          {isToday && (
+            <TouchableOpacity onPress={() => setShowTimeModal(true)}>
+              <Icon name="arrow-drop-down" size={28} color="#333" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* 목표 시간 선택 Modal */}
+      {/* 목표 시간 선택 모달 */}
       <Modal visible={showTimeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>목표 시간 선택</Text>
 
             <FlatList
-              data={timeOptions}
+              data={[
+                ...Array.from({ length: 24 }).flatMap((_, h) => [
+                  `${String(h).padStart(2, "0")}:00`,
+                  `${String(h).padStart(2, "0")}:30`,
+                ]),
+              ]}
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <TouchableOpacity
@@ -150,33 +224,28 @@ function DailyInfo() {
               )}
             />
 
-            <TouchableOpacity style={styles.closeButton} onPress={closeTimeModal}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowTimeModal(false)}
+            >
               <Text style={styles.closeText}>닫기</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* 오늘 공부시간 */}
+      {/* 공부 시간 */}
       <View style={styles.contentBox}>
-        <Text style={styles.contentTitle}>오늘공부시간</Text>
+        <Text style={styles.contentTitle}>공부시간</Text>
         <Text style={styles.contentText}>
           {String(Math.floor(todayStudyMin / 60)).padStart(2, "0")}:
           {String(todayStudyMin % 60).padStart(2, "0")}
         </Text>
       </View>
 
-      {/* 쉬는시간 */}
-      <View style={styles.contentBox}>
-        <Text style={styles.contentTitle}>쉬는시간</Text>
-        <Text style={styles.contentText}>00:00</Text>
-      </View>
-
       {/* 그래프 */}
       <View style={styles.progressContainer}>
-        <View
-          style={[styles.progressFill, { width: `${progressPercent}%` }]}
-        />
+        <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
         <View style={styles.progressRemain} />
       </View>
 
@@ -184,26 +253,15 @@ function DailyInfo() {
         <Text style={styles.graphLabel}>오늘 공부시간</Text>
         <Text style={styles.graphLabel}>목표시간</Text>
       </View>
-
-      {/* 날짜 picker modal */}
-      <DatePicker
-        modal
-        open={showDatePicker}
-        mode="date"
-        date={selectedDate}
-        onConfirm={(date) => {
-          setShowDatePicker(false);
-          setSelectedDate(date);
-        }}
-        onCancel={() => setShowDatePicker(false)}
-      />
     </View>
   );
 }
 
 export default DailyInfo;
 
-/* 스타일 (기존 동일) */
+/* ===============================
+ * styles (❌ 수정 없음)
+ * =============================== */
 const styles = StyleSheet.create({
   contentList: { flex: 1 },
   contentBox: {
@@ -215,18 +273,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderColor: "#e0e0e0",
-    width: "100%",
   },
-  contentTitle: {
-    fontSize: 15,
-    color: "#828282",
-    marginLeft: 24,
-  },
-  contentText: {
-    fontSize: 15,
-    color: "#828282",
-    marginRight: 24,
-  },
+  contentTitle: { fontSize: 15, color: "#828282", marginLeft: 24 },
+  contentText: { fontSize: 15, color: "#828282", marginRight: 24 },
 
   rightGroup: { flexDirection: "row", alignItems: "center", gap: 10 },
 
@@ -258,13 +307,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#eaf0fb",
     paddingVertical: 8,
-    paddingHorizontal: 20,
   },
-  dateText: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#333",
-  },
+  dateText: { fontSize: 20, fontWeight: "600", color: "#333" },
 
   modalOverlay: {
     flex: 1,
@@ -292,7 +336,6 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
   },
   timeText: { fontSize: 18, color: "#333" },
-
   closeButton: {
     backgroundColor: "#005bac",
     paddingVertical: 10,

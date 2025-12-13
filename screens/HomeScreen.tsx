@@ -1,30 +1,30 @@
-// HomeScreen.tsx — FINAL v7 (10초 자동 flush 포함)
+// HomeScreen.tsx — FINAL (single diff source)
 
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, AppState } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import firestore from "@react-native-firebase/firestore";
 
 import TodayTimer from "../components/HomeScreen/TodayTimer";
 import StudyList from "../components/HomeScreen/StudyList";
 import ReturnSeat from "../components/HomeScreen/ReturnSeat";
 
 import { useUserContext } from "../contexts/UserContext";
-import firestore from "@react-native-firebase/firestore";
-
 import { useStudyTimer } from "../components/HomeScreen/useStudyTimer";
-import { finishAllSessions } from "../lib/timer";
+import { flushSubject, updateTodayTotalTime } from "../lib/timer";
 
 export default function HomeScreen() {
   const { user, setUser } = useUserContext();
-  const [seatData, setSeatData] = useState(null);
-  const appState = useRef(AppState.currentState);
-
   const { todayUiTime, subjectTimes, seatStatus } = useStudyTimer();
-  const isFlushingRef = useRef(false);
 
-  /* ---------------------------------------------------
-   * USER SNAPSHOT
-   * --------------------------------------------------- */
+  const [seatData, setSeatData] = useState<any>(null);
+
+  const flushLock = useRef(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  /* ----------------------------------------------------
+   * users 구독
+   * ---------------------------------------------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -32,143 +32,147 @@ export default function HomeScreen() {
       .collection("users")
       .doc(user.uid)
       .onSnapshot((snap) => {
-        if (!snap.exists) return;
-        const data = snap.data();
-
-        // 선택 과목 없으면 base로 교정
-        if (!data.selectedSubject || !data.subject?.[data.selectedSubject]) {
-          firestore()
-            .collection("users")
-            .doc(user.uid)
-            .update({
-              selectedSubject: "base",
-            });
+        if (snap.exists) {
+          setUser((prev) => ({ ...prev, ...snap.data() }));
         }
-
-        setUser((prev) => ({ ...prev, ...data }));
       });
   }, [user?.uid]);
 
-  /* ---------------------------------------------------
-   * SEAT SNAPSHOT
-   * --------------------------------------------------- */
+  /* ----------------------------------------------------
+   * seats 구독 (occupied → empty flush)
+   * ---------------------------------------------------- */
   useEffect(() => {
-    if (!user?.seatId) {
-      setSeatData(null);
-      return;
-    }
+    if (!user?.seatId) return;
 
     const seatRef = firestore().collection("seats").doc(user.seatId);
-    let prevStatus = "empty";
+    let prevStatus: string = "empty";
 
     return seatRef.onSnapshot(async (snap) => {
       if (!snap.exists) return;
 
-      const data = snap.data();
-      setSeatData(data);
+      const seat = snap.data();
+      setSeatData(seat);
 
-      const now = data.status;
-      const leaving = prevStatus === "occupied" && now !== "occupied";
+      const isLeaving =
+        prevStatus === "occupied" && seat.status !== "occupied";
 
-      // 좌석 떠날 때 flush
-      if (leaving && !isFlushingRef.current && user.runningSubjectSince) {
-        isFlushingRef.current = true;
+      if (isLeaving && seat.lastFlushedAt && !flushLock.current) {
+        flushLock.current = true;
 
-        await finishAllSessions({
+        const prev = seat.lastFlushedAt;
+
+        const result = await flushSubject({
           uid: user.uid,
-          selectedSubject: user.selectedSubject,
-          runningSubjectSince: user.runningSubjectSince,
+          subjectId: user.selectedSubject,
+          lastFlushedAt: prev,
         });
 
-        isFlushingRef.current = false;
-      }
-
-      prevStatus = now;
-    });
-  }, [user?.seatId, user?.runningSubjectSince, user?.selectedSubject]);
-
-  /* ---------------------------------------------------
-   * APP STATE FLUSH (백그라운드 이동)
-   * --------------------------------------------------- */
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", async (nextState) => {
-      if (
-        nextState.match(/inactive|background/) &&
-        appState.current === "active"
-      ) {
-        if (
-          seatStatus === "occupied" &&
-          user.runningSubjectSince &&
-          !isFlushingRef.current
-        ) {
-          isFlushingRef.current = true;
-
-          await finishAllSessions({
-            uid: user.uid,
-            selectedSubject: user.selectedSubject,
-            runningSubjectSince: user.runningSubjectSince,
-          });
-
-          isFlushingRef.current = false;
+        if (result) {
+          await updateTodayTotalTime(user.uid, result.diff);
         }
+
+        await seatRef.update({
+          occupiedAt: null,
+          lastFlushedAt: null,
+          lastSeated: firestore.Timestamp.now(),
+        });
+
+        flushLock.current = false;
       }
 
-      appState.current = nextState;
+      prevStatus = seat.status;
     });
+  }, [user?.seatId, user?.selectedSubject]);
 
-    return () => subscription.remove();
-  }, [seatStatus, user.runningSubjectSince, user.selectedSubject]);
-
-  /* ---------------------------------------------------
-   * ⭐ 10초마다 자동 flush → RankScreen 실시간 반영
-   * --------------------------------------------------- */
+  /* ----------------------------------------------------
+   * occupied 진입 & 앱 재실행 시 lastFlushedAt 복구
+   * ---------------------------------------------------- */
   useEffect(() => {
-    if (!user?.uid || seatStatus !== "occupied" || !user.runningSubjectSince)
-      return;
+    if (seatStatus !== "occupied" || !user?.seatId) return;
 
-    const interval = setInterval(async () => {
-      if (isFlushingRef.current) return;
+    const seatRef = firestore().collection("seats").doc(user.seatId);
 
-      isFlushingRef.current = true;
+    seatRef.get().then((snap) => {
+      const seat = snap.data();
+      if (!seat) return;
 
-      // 1) flush
-      await finishAllSessions({
+      const last = seat.lastFlushedAt;
+      const now = firestore.Timestamp.now();
+
+      // lastFlushedAt 없거나, 너무 오래되었을 때만 세팅
+      if (
+        !last ||
+        now.toDate().getTime() - last.toDate().getTime() > 15_000
+      ) {
+        seatRef.update({
+          lastFlushedAt: now,
+        });
+      }
+    });
+  }, [seatStatus, user?.seatId]);
+
+  /* ----------------------------------------------------
+   * 10초 주기 flush
+   * ---------------------------------------------------- */
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (seatStatus !== "occupied") return;
+    if (intervalRef.current) return;
+
+    intervalRef.current = setInterval(async () => {
+      if (flushLock.current) return;
+
+      const seatRef = firestore()
+        .collection("seats")
+        .doc(user.seatId);
+
+      const snap = await seatRef.get();
+      const seat = snap.data();
+      if (!seat?.lastFlushedAt) return;
+
+      flushLock.current = true;
+
+      const prev = seat.lastFlushedAt;
+
+      const result = await flushSubject({
         uid: user.uid,
-        selectedSubject: user.selectedSubject,
-        runningSubjectSince: user.runningSubjectSince,
+        subjectId: user.selectedSubject,
+        lastFlushedAt: prev,
       });
 
-      // 2) flush 후 즉시 runningSubjectSince 재시작 (UI 끊김 방지)
-      await firestore()
-        .collection("users")
-        .doc(user.uid)
-        .update({
-          runningSubjectSince: firestore.Timestamp.now(),
+      if (result) {
+        await updateTodayTotalTime(user.uid, result.diff);
+
+        await seatRef.update({
+          lastFlushedAt: result.newTs,
         });
+      }
 
-      isFlushingRef.current = false;
-    }, 10000); // 🔥 10초마다 실행
+      flushLock.current = false;
+    }, 10000);
 
-    return () => clearInterval(interval);
-  }, [seatStatus, user?.runningSubjectSince, user?.selectedSubject]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [seatStatus, user?.selectedSubject, user?.uid]);
 
-  /* ---------------------------------------------------
-   * STATUS TEXT
-   * --------------------------------------------------- */
-  const statusText = {
-    none: "",
+  /* ----------------------------------------------------
+   * UI
+   * ---------------------------------------------------- */
+  const statusMap: Record<string, string> = {
+    none: "미예약",
     empty: "미착석",
     occupied: "공부중!",
     object: "물건!",
-  }[seatStatus];
+  };
 
-  /* ---------------------------------------------------
-   * RENDER
-   * --------------------------------------------------- */
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.statusBar}>
-        <Text style={styles.statusText}>{statusText}</Text>
+        <Text style={styles.statusText}>{statusMap[seatStatus]}</Text>
       </View>
 
       <TodayTimer uiTime={todayUiTime} />
@@ -180,7 +184,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-
   statusBar: {
     padding: 10,
     alignItems: "center",
@@ -188,7 +191,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#ddd",
   },
-
   statusText: {
     fontSize: 16,
     fontWeight: "600",

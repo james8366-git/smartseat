@@ -1,8 +1,10 @@
+// AdminTab.tsx — FINAL
+
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-import AdminPlaceScreen from "./AdminPlaceScreen";
+import AdminRoomStack from "./AdminRoomStack";   // ★ 추가
 import SettingsScreen from "../Settings/SettingsScreen";
 
 const Tab = createBottomTabNavigator();
@@ -18,7 +20,7 @@ export default function AdminTab() {
     >
       <Tab.Screen
         name="AdminPlaces"
-        component={AdminPlaceScreen}
+        component={AdminRoomStack}     // ★ 변경
         options={{
           title: "자리관리",
           tabBarIcon: ({ color }) => (
