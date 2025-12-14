@@ -70,10 +70,10 @@ function MainTab(){
                             (
                                 {
                                     tabPress: (e) => {
-                                    e.preventDefault();  // 기본 동작 막기
+                                    e.preventDefault();  
                                     navigation.navigate("ReservationStack",
                                             {
-                                                screen: "Place",    // 🔥 ReservationStack 내 첫 화면 강제 이동
+                                                screen: "Place",    
                                             }
                                         );
                                     },
@@ -121,7 +121,7 @@ function MainTab(){
                             (
                                 {
                                     tabPress: (e) => {
-                                    e.preventDefault();  // 기본 동작 막기
+                                    e.preventDefault(); 
                                     navigation.navigate("ProfileStack",
                                             {
                                                 screen: "Profile",

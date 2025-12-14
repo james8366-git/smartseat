@@ -42,27 +42,27 @@ service cloud.firestore {
 
       /* ---- READ RULES ---- */
 
-      // 🔵 1) 중복확인용: users 컬렉션 "list" 허용
+      // 1) 중복확인용: users 컬렉션 "list" 허용
       //     → .where("nickname", "==", "...") 허용
       allow list: if true;
 
-      // 🔵 2) 문서 내용을 읽는 것은 본인만
+      // 2) 문서 내용을 읽는 것은 본인만
       allow get: if request.auth != null
         && request.auth.uid == userId;
 
 
       /* ---- WRITE RULES ---- */
 
-      // 🔥 회원가입(create)
+      //  회원가입(create)
       allow create: if request.auth != null
         && request.auth.uid == userId
 
-      // 🔥 update: seatId만 수정 OR 유효한 전체 업데이트
+      //  update: seatId만 수정 OR 유효한 전체 업데이트
       allow update: if request.auth != null
         && request.auth.uid == userId
         && (validUser() || isSeatIdOnlyUpdate());
 
-      // 🔥 delete
+      //  delete
       allow delete: if request.auth != null
         && request.auth.uid == userId
         && validUser();

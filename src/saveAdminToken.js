@@ -26,7 +26,7 @@ async function saveAdminToken(userId) {
         .collection('users')
         .doc(userId)
         .update({
-        fcmToken: token,
+        adminFcmToken: token,
         isadmin: true,
     });
     console.log("관리자 토큰 저장 완료:", token);

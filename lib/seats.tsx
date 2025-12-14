@@ -9,26 +9,35 @@ export async function getSeatsByRoom(roomId) {
     .get();
 
   return snapshot.docs.map((doc) => ({
-    seatId: doc.id,               // 🔥 seatId 필드는 문서 id!
+    seatId: doc.id,               //  seatId 필드는 문서 id!
     ...doc.data(),
   }));
 }
 
 
 /** 방(roomId) 기준 좌석 수 */
-export async function getSeatCountByRoom(roomId: string) {
-  const seats = await getSeatsByRoom(roomId);
+export function getSeatCountByRoom(
+  roomId: string,
+  onUpdate: (count: {
+    total: number;
+    available: number;
+    reserved: number;
+  }) => void
+) {
+  return firestore()
+    .collection("seats")
+    .where("room", "==", roomId)
+    .onSnapshot((snap) => {
+      const seats = snap.docs.map((d) => d.data());
 
-  const total = seats.length;
+      const total = seats.length;
+      const available = seats.filter((s) => s.status === "none").length;
+      const reserved = total - available;
 
-  // none = 사용 가능 자리
-  const available = seats.filter((s) => s.status === "none").length;
-
-  // 나머지는 모두 예약된 자리
-  const reserved = total - available;
-
-  return { total, available, reserved };
+      onUpdate({ total, available, reserved });
+    });
 }
+
 
 /** roomId → 한글 열람실 이름 */
 export function roomIdToName(roomId: string) {
@@ -53,85 +62,67 @@ export function roomIdToName(roomId: string) {
  * - studylogs/{uid} 생성(or merge)
  */
 export async function reserveSeat({
-  seatDocId,
-  roomId,
-  seatNumber,
-  user,
+    seatDocId,
+    roomId,
+    seatNumber,
+    user,
 }: {
-  seatDocId: string;
-  roomId: string;
-  seatNumber: number | string;
-  user: {
-    uid: string;
-    student_number: string;
-    selectedSubject: string;
+    seatDocId: string;
+    roomId: string;
+    seatNumber: number | string;
+    user: {
+        uid: string;
+        student_number: string;
+        selectedSubject: string;
   };
 }) {
-  const db = firestore();
+    const db = firestore();
 
-  const seatRef = db.collection('seats').doc(seatDocId);
-  const userRef = db.collection('users').doc(user.uid);
-//   const studyRef = db.collection('studylogs').doc();
+    const seatRef = db.collection('seats').doc(seatDocId);
+    const userRef = db.collection('users').doc(user.uid);
+    //   const studyRef = db.collection('studylogs').doc();
 
-  await db.runTransaction(async (tx) => {
-    const [seatSnap, userSnap] = await Promise.all([
-      tx.get(seatRef),
-      tx.get(userRef),
-    ]);
+    await db.runTransaction(async (tx) => {
+        const [seatSnap, userSnap] = await Promise.all([
+        tx.get(seatRef),
+        tx.get(userRef),
+        ]);
 
-    if (!seatSnap.exists) throw new Error('NO_SEAT');
+        if (!seatSnap.exists) throw new Error('NO_SEAT');
 
-    const seatData: any = seatSnap.data();
-    const userData: any = userSnap.data();
+        const seatData: any = seatSnap.data();
+        const userData: any = userSnap.data();
 
-    if (seatData.status !== 'none') throw new Error('SEAT_ALREADY_RESERVED');
-    if (userData?.seatId && userData.seatId !== '') throw new Error('USER_ALREADY_HAS_SEAT');
+        if (seatData.status !== 'none') throw new Error('SEAT_ALREADY_RESERVED');
+        if (userData?.seatId && userData.seatId !== '') throw new Error('USER_ALREADY_HAS_SEAT');
 
-    const now = new Date();
-    const z = (n: number) => String(n).padStart(2, "0");
+        const now = new Date();
+        const z = (n: number) => String(n).padStart(2, "0");
 
-    const reservedSt = `${z(now.getHours())}:${z(now.getMinutes())}`;
-    const end = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-    const reservedEd = `${z(end.getHours())}:${z(end.getMinutes())}`;
+        const reservedSt = `${z(now.getHours())}:${z(now.getMinutes())}`;
+        const end = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+        const reservedEd = `${z(end.getHours())}:${z(end.getMinutes())}`;
 
-    const roomName = roomIdToName(roomId);
-    const seatLabel = `${roomName}-${seatNumber}번`;
+        const roomName = roomIdToName(roomId);
+        const seatLabel = `${roomName}-${seatNumber}번`;
 
-    tx.update(seatRef, {
-      student_number: user.student_number,
-      status: 'empty',
-      reservedSt,
-      reservedEd,
-      lastSeated: now,
-      occupiedAt: now,
-      seatLabel,
-      uid: user.uid,
-    //   studylogId: studyRef.id,
+        tx.update(seatRef, {
+            student_number: user.student_number,
+            status: 'empty',
+            reservedSt,
+            reservedEd,
+            lastSeated: now,
+            occupiedAt: now,
+            seatLabel,
+            uid: user.uid,
+        });
+
+        tx.update(userRef, {
+            seatId: seatDocId,
+            selectedSubject: user.selectedSubject ?? "",
+        } );
+
     });
-
-    tx.update(userRef, {
-        seatId: seatDocId,
-        selectedSubject: user.selectedSubject ?? "",
-    } );
-
-    // ⭐ 새 로그 문서를 생성
-    // tx.set(studyRef, {
-    //   uid: user.uid,
-    //   seatId: seatDocId,
-    //   lastSeated: null,
-    //   occupiedAt: null,
-    //   student_number: user.student_number,
-    //   totalTime: 0,
-    //   createdAt: now,   // 🔥 추가 (로그 정렬용)
-    //   studylogId: studyRef.id,
-    //   subject: [
-    //     {
-    //       subjectName: user.selectedSubject,
-    //       studyTime: 0,
-    //     },
-    //   ],
-    // });
-  });
 }
 
 
@@ -160,62 +151,62 @@ export async function returnSeatTransaction({
   seatId: string;
   selectedSubject: string;
 }) {
-  const db = firestore();
+    const db = firestore();
 
-  const seatRef = db.collection("seats").doc(seatId);
-  const userRef = db.collection("users").doc(uid);
+    const seatRef = db.collection("seats").doc(seatId);
+    const userRef = db.collection("users").doc(uid);
 
-  await db.runTransaction(async (tx) => {
-    const seatSnap = await tx.get(seatRef);
-    if (!seatSnap.exists) return;
+    await db.runTransaction(async (tx) => {
+        const seatSnap = await tx.get(seatRef);
+        if (!seatSnap.exists) return;
 
-    const seat = seatSnap.data();
-    const lastFlushedAt = seat?.lastFlushedAt;
+        const seat = seatSnap.data();
+        const lastFlushedAt = seat?.lastFlushedAt;
 
-    /* -----------------------------
-     * 1) 잔여 시간 확정
-     * ----------------------------- */
-    if (selectedSubject && lastFlushedAt) {
-      const now = firestore.Timestamp.now();
+        /* -----------------------------
+        * 1) 잔여 시간 확정
+        * ----------------------------- */
+        if (selectedSubject && lastFlushedAt) {
+        const now = firestore.Timestamp.now();
 
-      const diff = Math.max(
-        0,
-        Math.floor(
-          (now.toDate().getTime() -
-            lastFlushedAt.toDate().getTime()) / 1000
-        )
-      );
+        const diff = Math.max(
+            0,
+            Math.floor(
+            (now.toDate().getTime() -
+                lastFlushedAt.toDate().getTime()) / 1000
+            )
+        );
 
-      if (diff > 0) {
-        tx.update(userRef, {
-          [`subject.${selectedSubject}.time`]:
-            firestore.FieldValue.increment(diff),
-          todayTotalTime:
-            firestore.FieldValue.increment(diff),
+        if (diff > 0) {
+            tx.update(userRef, {
+            [`subject.${selectedSubject}.time`]:
+                firestore.FieldValue.increment(diff),
+            todayTotalTime:
+                firestore.FieldValue.increment(diff),
+            });
+        }
+        }
+
+        /* -----------------------------
+        * 2) 좌석 상태 초기화
+        * ----------------------------- */
+        tx.update(seatRef, {
+            status: "none",
+            reservedSt: "",
+            reservedEd: "",
+            student_number: "",
+            studylogId: "",
+            isStudying: false,
+            occupiedAt: null,
+            lastFlushedAt: null,
+            lastSeated: firestore.Timestamp.now(),
         });
-      }
-    }
 
-    /* -----------------------------
-     * 2) 좌석 상태 초기화
-     * ----------------------------- */
-    tx.update(seatRef, {
-      status: "none",
-      reservedSt: "",
-      reservedEd: "",
-      student_number: "",
-      studylogId: "",
-      isStudying: false,
-      occupiedAt: null,
-      lastFlushedAt: null,
-      lastSeated: firestore.Timestamp.now(),
+        /* -----------------------------
+        * 3) user 상태 초기화
+        * ----------------------------- */
+        tx.update(userRef, {
+            seatId: null,
+        });
     });
-
-    /* -----------------------------
-     * 3) user 상태 초기화
-     * ----------------------------- */
-    tx.update(userRef, {
-      seatId: null,
-    });
-  });
 }

@@ -7,22 +7,28 @@ import TabBar from '../../components/Reservation/Place/TabBar';
 import RoomList from '../../components/Reservation/Place/RoomList';
 
 function PlaceScreen({ navigation }) {
-  const [selectedTab, setSelectedTab] = useState('reading_room');
+    const [selectedTab, setSelectedTab] = useState('reading_room');
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <TabBar selectedTab={selectedTab} onSelect={setSelectedTab} />
+    return (
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <TabBar selectedTab={selectedTab} onSelect={setSelectedTab} />
 
-        <View style={styles.separator} />
+            <View style={styles.separator} />
 
-      <RoomList selectedTab={selectedTab} navigation={navigation} />
-    </SafeAreaView>
-  );
+            <RoomList selectedTab={selectedTab} navigation={navigation} />
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  separator: { height: 1, backgroundColor: '#DADADA' },
+    container: { 
+        flex: 1, 
+        backgroundColor: '#FFFFFF' 
+    },
+    separator: { 
+        height: 1, 
+        backgroundColor: '#DADADA' 
+    },
 });
 
 export default PlaceScreen;

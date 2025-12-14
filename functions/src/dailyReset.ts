@@ -14,7 +14,7 @@ export const dailyReset = onSchedule(
     region: "asia-northeast3",
   },
   async () => {
-    logger.info("🔥 Daily reset (lastFlushedAt-based) started");
+    logger.info(" Daily reset (lastFlushedAt-based) started");
 
     const seatsSnap = await db
       .collection("seats")
@@ -103,6 +103,6 @@ export const dailyReset = onSchedule(
     }
 
     await batch.commit();
-    logger.info("🔥 Daily reset completed");
+    logger.info(" Daily reset completed");
   }
 );

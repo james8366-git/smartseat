@@ -5,11 +5,11 @@ import RankScreen from './RankScreen';
 const Stack = createNativeStackNavigator();
 
 function RankStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Rank" component={RankScreen} />
-    </Stack.Navigator>
-  );
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Rank" component={RankScreen} />
+        </Stack.Navigator>
+    );
 }
 
 export default RankStack;

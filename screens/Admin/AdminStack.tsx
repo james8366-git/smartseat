@@ -8,9 +8,9 @@ import AdminTab from "./AdminTab";
 const Stack = createNativeStackNavigator();
 
 export default function AdminStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="AdminTab" component={AdminTab} />
-    </Stack.Navigator>
-  );
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="AdminTab" component={AdminTab} />
+        </Stack.Navigator>
+    );
 }

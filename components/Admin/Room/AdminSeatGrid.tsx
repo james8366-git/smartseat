@@ -3,38 +3,42 @@ import { View, StyleSheet } from "react-native";
 import AdminSeatBox from "./AdminSeatBox";
 
 export default function AdminSeatGrid({
-  seats,
-  seatsPerRow,
-  onSeatPress,
-  seatColorFn,
-}) {
-  const seatRows = [];
-  for (let i = 0; i < seats.length; i += seatsPerRow) {
-    seatRows.push(seats.slice(i, i + seatsPerRow));
-  }
+    seats,
+    seatsPerRow,
+    onSeatPress,
+    seatColorFn,
+    }
+) 
+{
+    const seatRows = [];
+    for (let i = 0; i < seats.length; i += seatsPerRow) {
+        seatRows.push(seats.slice(i, i + seatsPerRow));
+    }
 
-  return (
-    <View style={styles.seatContainer}>
-      {seatRows.map((row, rowIdx) => (
-        <View key={`row-${rowIdx}`} style={styles.seatRow}>
-          {row.map((seat) => (
-            <AdminSeatBox
-              key={seat.id}
-              seatNumber={seat.seat_number}
-              status={seat.status}
-              adminColor={
-                seatColorFn ? seatColorFn(seat) : "#CCCCCC"
-              }
-              onPress={() => {
-                console.log("Pressed Seat:", seat);
-                onSeatPress(seat);
-                }}
-            />
-          ))}
+    return (
+        <View style={styles.seatContainer}>
+            {seatRows.map((row, rowIdx) => (
+                <View key={`row-${rowIdx}`} style={styles.seatRow}>
+                    {row.map((seat) => (
+                        <AdminSeatBox
+                            key={seat.id}
+                            seatNumber={seat.seat_number}
+                            status={seat.status}
+                            adminColor={
+                                seatColorFn ? seatColorFn(seat) : "#CCCCCC"
+                            }
+                            onPress={
+                                () => {
+                                    console.log("Pressed Seat:", seat);
+                                    onSeatPress(seat);
+                                }
+                            }
+                        />
+                    ))}
+                </View>
+            ))}
         </View>
-      ))}
-    </View>
-  );
+    );
 }
 
 const styles = StyleSheet.create({

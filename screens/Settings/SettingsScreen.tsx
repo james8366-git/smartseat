@@ -2,20 +2,17 @@ import React, { useState } from "react";
 import { 
   View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert 
 } from "react-native";
-import Icon from "react-native-vector-icons/MaterialIcons";
 import { useUserContext } from "../../contexts/UserContext";
 import firestore from "@react-native-firebase/firestore";
 import { signOut } from "../../lib/auth";
 import { useNavigation } from "@react-navigation/native";
 
-// 🔥 분리된 포모도로 설정 컴포넌트
-import Pomodoro from "../../components/Settings/Pomodoro";
 
 function SettingsScreen() {
   const { user, setUser } = useUserContext();
   const navigation = useNavigation();
 
-  // 🔥 닉네임 변경 관련 state
+  //  닉네임 변경 관련 state
   const [nicknameModal, setNicknameModal] = useState(false);
   const [newNickname, setNewNickname] = useState(user?.nickname || "");
 
@@ -77,7 +74,7 @@ function SettingsScreen() {
         </View>
       </View>
 
-      {/* 🔥 닉네임 변경 Modal */}
+      {/*  닉네임 변경 Modal */}
       <Modal visible={nicknameModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.nicknameBox}>
@@ -116,100 +113,117 @@ function SettingsScreen() {
 /* ================= 스타일 ================= */
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "white",
-    alignItems: "center",
-    paddingTop: 50,
-  },
-  headerText: { fontSize: 22, fontWeight: "bold", marginBottom: 20 },
+    container: {
+        flex: 1,
+        backgroundColor: "white",
+        alignItems: "center",
+        paddingTop: 50,
+    },
+    headerText: { 
+        fontSize: 22, 
+        fontWeight: "bold", 
+        marginBottom: 20 
+    },
 
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "90%",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 4,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
+    row: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        width: "90%",
+        borderWidth: 1,
+        borderColor: "#ddd",
+        borderRadius: 4,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        marginBottom: 12,
+    },
 
-  label: { fontSize: 16, color: "#555" },
-  rightGroup: { flexDirection: "row", alignItems: "center", gap: 10 },
-  value: { fontSize: 16, color: "#333" },
+    label: { 
+        fontSize: 16, 
+        color: "#555" 
+    },
+    rightGroup: { 
+        flexDirection: "row", 
+        alignItems: "center", 
+        gap: 10 
+    },
+    value: { 
+        fontSize: 16, 
+        color: "#333" 
+    },
 
-  changeButton: {
-    backgroundColor: "#eee",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 4,
-  },
-  changeText: { fontSize: 14, color: "#555" },
+    changeButton: {
+        backgroundColor: "#eee",
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 4,
+    },
+    changeText: { 
+        fontSize: 14, 
+        color: "#555" 
+    },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
 
-  nicknameBox: {
-    width: "80%",
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
-  },
+    nicknameBox: {
+        width: "80%",
+        backgroundColor: "white",
+        padding: 20,
+        borderRadius: 10,
+    },
 
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 12,
-  },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        textAlign: "center",
+        marginBottom: 12,
+    },
 
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 20,
-  },
+    input: {
+        borderWidth: 1,
+        borderColor: "#ccc",
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 20,
+    },
 
-  saveButton: {
-    backgroundColor: "#5A8DEE",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  saveText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 16,
-  },
+    saveButton: {
+        backgroundColor: "#5A8DEE",
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: "center",
+    },
+    saveText: {
+        color: "white",
+        fontWeight: "600",
+        fontSize: 16,
+    },
 
-  cancelButton: {
-    marginTop: 10,
-    alignItems: "center",
-    paddingVertical: 10,
-    backgroundColor: "#eee",
-    borderRadius: 8,
-  },
+    cancelButton: {
+        marginTop: 10,
+        alignItems: "center",
+        paddingVertical: 10,
+        backgroundColor: "#eee",
+        borderRadius: 8,
+    },
 
-  logoutButton: {
-    marginTop: 30,
-    backgroundColor: "#d9534f",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-  },
-  logoutText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+    logoutButton: {
+        marginTop: 30,
+        backgroundColor: "#d9534f",
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 6,
+    },
+    logoutText: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "600",
+    },
 });
 
 export default SettingsScreen;

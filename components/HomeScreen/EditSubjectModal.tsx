@@ -24,14 +24,14 @@ function EditSubjectModal({ visible, newName, setNewName, onCancel, onSave }) {
                     <View style={styles.buttonRow}>
                         <TouchableOpacity
                             style={[styles.button, { backgroundColor: '#ccc' }]}
-                            onPress={onCancel}          // 🔥 변경 없음
+                            onPress={onCancel}          
                         >
                             <Text>취소</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={[styles.button, { backgroundColor: '#5A8DEE' }]}
-                            onPress={onSave}             // 🔥 EditSubject.tsx의 saveEdit() 호출됨
+                            onPress={onSave}             
                         >
                             <Text style={{ color: 'white' }}>저장</Text>
                         </TouchableOpacity>

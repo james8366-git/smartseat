@@ -2,23 +2,23 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 
 function TabBar({ selectedTab, onSelect }) {
-  return (
-    <View style={styles.tabBar}>
-      <TouchableOpacity
-        style={[styles.tabItem, selectedTab === 'reading_room' && styles.activeTab]}
-        onPress={() => onSelect('reading_room')}
-      >
-        <Text
-          style={[
-            styles.tabText,
-            selectedTab === 'reading_room' && styles.activeTabText
-          ]}
+    return (
+        <View style={styles.tabBar}>
+        <TouchableOpacity
+            style={[styles.tabItem, selectedTab === 'reading_room' && styles.activeTab]}
+            onPress={() => onSelect('reading_room')}
         >
-          일반열람실
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+            <Text
+            style={[
+                styles.tabText,
+                selectedTab === 'reading_room' && styles.activeTabText
+            ]}
+            >
+            일반열람실
+            </Text>
+        </TouchableOpacity>
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({

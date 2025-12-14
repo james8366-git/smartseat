@@ -1,22 +1,18 @@
-// timer.ts — FINAL (lastFlushedAt 기준)
-// ✔ diff = now - lastFlushedAt
-// ✔ 같은 시간 구간 중복 누적 불가
-
 import firestore from "@react-native-firebase/firestore";
 
 /* -----------------------------------------------------
  * todayTotalTime 재계산
  * ----------------------------------------------------- */
 export async function updateTodayTotalTime(uid: string , diff: number) {
-  if (!uid || diff <= 0) return;
+    if (!uid || diff <= 0) return;
 
-  const userRef = firestore().collection("users").doc(uid);
+    const userRef = firestore().collection("users").doc(uid);
 
-  await userRef.update(
-    {
-        todayTotalTime: firestore.FieldValue.increment(diff),
-    }
-  );
+    await userRef.update(
+        {
+            todayTotalTime: firestore.FieldValue.increment(diff),
+        }
+    );
 }
 
 /* -----------------------------------------------------
@@ -31,23 +27,22 @@ export async function flushSubject({
   subjectId: string;
   lastFlushedAt: FirebaseFirestoreTypes.Timestamp;
 }) {
-  if (!uid || !subjectId || !lastFlushedAt) return;
+    if (!uid || !subjectId || !lastFlushedAt) return;
 
-  const now = firestore.Timestamp.now();
+    const now = firestore.Timestamp.now();
 
-  const start = lastFlushedAt.toDate().getTime() / 1000;
-  const end = now.toDate().getTime() / 1000;
-  const diff = Math.max(0, Math.floor(end - start));
-  if (diff <= 0) return;
+    const start = lastFlushedAt.toDate().getTime() / 1000;
+    const end = now.toDate().getTime() / 1000;
+    const diff = Math.max(0, Math.floor(end - start));
+    if (diff <= 0) return;
 
-  const userRef = firestore().collection("users").doc(uid);
-  // 🔥 base 읽지 말고 increment 사용
-  await userRef.update({
-    [`subject.${subjectId}.time`]: firestore.FieldValue.increment(diff),
-  });
+    const userRef = firestore().collection("users").doc(uid);
+    //  base 읽지 말고 increment 사용
+    await userRef.update({
+        [`subject.${subjectId}.time`]: firestore.FieldValue.increment(diff),
+    });
 
-  // 🔥 diff를 함께 반환
-  return { newTs: now, diff };
-
-  return now; // 🔥 호출부에서 lastFlushedAt 갱신용
+    //  diff를 함께 반환
+    return { newTs: now, diff };
+    
 }

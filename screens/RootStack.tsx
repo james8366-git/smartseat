@@ -14,72 +14,69 @@ import AdminStack from "./Admin/AdminStack";
 
 const Stack = createNativeStackNavigator();
 
-// 🔵 인증(로그인/회원가입) 전용 네비게이터
 function AuthStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="SignIn" component={SignInScreen} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} />
-    </Stack.Navigator>
-  );
-}
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="SignIn" component={SignInScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+        </Stack.Navigator>
+    );
+    }
 
-// 🔵 앱 내부(일반 사용자 + 관리자) 네비게이터
-function AppStack({ isadmin }) {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isadmin ? (
-        <Stack.Screen name="AdminStack" component={AdminStack} />
-      ) : (
-        <Stack.Screen name="MainTab" component={MainTab} />
-      )}
-    </Stack.Navigator>
-  );
-}
+    function AppStack({ isadmin }) {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isadmin ? (
+            <Stack.Screen name="AdminStack" component={AdminStack} />
+        ) : (
+            <Stack.Screen name="MainTab" component={MainTab} />
+        )}
+        </Stack.Navigator>
+    );
+    }
 
-export default function RootStack() {
-  const { user, setUser } = useUserContext();
-  const [initializing, setInitializing] = useState(true);
+    export default function RootStack() {
+        const { user, setUser } = useUserContext();
+        const [initializing, setInitializing] = useState(true);
 
-    useEffect(() => {
-        const unsub = subscribeAuth(async (currentUser) => {
-        if (currentUser) {
-            const profile = await getUser(currentUser.uid);
-            setUser(profile ?? null);
-        } else {
-            setUser(null);
+        useEffect(() => {
+            const unsub = subscribeAuth(async (currentUser) => {
+            if (currentUser) {
+                const profile = await getUser(currentUser.uid);
+                setUser(profile ?? null);
+            } else {
+                setUser(null);
+            }
+            setInitializing(false);
+            });
+            return unsub;
+        }, []);
+
+        useEffect(() => {
+        if (!user?.uid) return;
+
+        const userRef = firestore().collection("users").doc(user.uid);
+
+        // 오늘 stat.daily 생성을 위한 dummy write
+        userRef.set(
+            {
+                lastOpenedAt: firestore.FieldValue.serverTimestamp()
+            },
+            { merge: true }
+        );
+        }, [user?.uid]);
+
+        if (initializing) {
+            return (
+            <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }} edges={["top", "bottom"]}>
+            <ActivityIndicator size="large" color="#5A8DEE" />
+            </SafeAreaView>
+            );
         }
-        setInitializing(false);
-        });
-        return unsub;
-    }, []);
 
-    useEffect(() => {
-    if (!user?.uid) return;
-
-    const userRef = firestore().collection("users").doc(user.uid);
-
-    // 오늘 stat.daily 생성을 위한 dummy write
-    userRef.set(
-        {
-            lastOpenedAt: firestore.FieldValue.serverTimestamp()
-        },
-        { merge: true }
-    );
-    }, [user?.uid]);
-
-  if (initializing) {
-    return (
-    <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }} edges={["top", "bottom"]}>
-      <ActivityIndicator size="large" color="#5A8DEE" />
-    </SafeAreaView>
-    );
-  }
-
-  // 🔥 핵심: 인증 여부에 따라 전체 네비게이터를 교체함
-    return (
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-            {!user ? <AuthStack /> : <AppStack isadmin={user.isadmin} />}
-        </SafeAreaView>
-    );
+        return (
+            <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+                {!user ? <AuthStack /> : <AppStack isadmin={user.isadmin} />}
+            </SafeAreaView>
+        );
 }

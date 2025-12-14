@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import { updateSubjects } from "../../lib/users";
 
 export default function EditSubject({
   visible,
@@ -19,46 +18,47 @@ export default function EditSubject({
   setNewName,
   subjects,
   syncToFirestore,
-}) {
-  if (!editingSubject) return null;
+}) 
+{
+    if (!editingSubject) return null;
 
-  const onSave = async () => {
-    const updated = subjects.map((s) =>
-      s.id === editingSubject.id ? { ...s, name: newName } : s
+    const onSave = async () => {
+        const updated = subjects.map((s) =>
+            s.id === editingSubject.id ? { ...s, name: newName } : s
+        );
+
+        await syncToFirestore(updated);
+        setVisible(false);
+    };
+
+    return (
+        <Modal visible={visible} transparent animationType="fade">
+            <View style={styles.overlay}>
+                <View style={styles.box}>
+                <Text style={styles.title}>과목 수정</Text>
+
+                <TextInput
+                    style={styles.input}
+                    value={newName}
+                    onChangeText={setNewName}
+                />
+
+                <View style={styles.row}>
+                    <TouchableOpacity style={styles.saveBtn} onPress={onSave}>
+                        <Text style={styles.saveText}>저장</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.saveBtn, { backgroundColor: "#bbb" }]}
+                        onPress={() => setVisible(false)}
+                    >
+                        <Text style={styles.saveText}>취소</Text>
+                    </TouchableOpacity>
+                </View>
+                </View>
+            </View>
+        </Modal>
     );
-
-    await syncToFirestore(updated);
-    setVisible(false);
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
-        <View style={styles.box}>
-          <Text style={styles.title}>과목 수정</Text>
-
-          <TextInput
-            style={styles.input}
-            value={newName}
-            onChangeText={setNewName}
-          />
-
-          <View style={styles.row}>
-            <TouchableOpacity style={styles.saveBtn} onPress={onSave}>
-              <Text style={styles.saveText}>저장</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: "#bbb" }]}
-              onPress={() => setVisible(false)}
-            >
-              <Text style={styles.saveText}>취소</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
 }
 
 const styles = StyleSheet.create({

@@ -13,7 +13,7 @@ import {
  * @returns {boolean} true면 통과, false면 실패
  */
 export default function checkSignUpError(form, duplicateValid) {
-  const { name, student_number, password, confirmPassword, nickname, department } = form;
+    const { name, student_number, password, confirmPassword, nickname, department } = form;
 
     // 이름
     if (!name || name.length < 2 || name.length > 40) {

@@ -59,23 +59,23 @@ export const goalAchieved = onSchedule(
         });
 
         /* --------------------------------------------------
-         * 2️⃣ users.goalnotified 갱신 🔥
+         *  users.goalnotified 갱신 
          * -------------------------------------------------- */
         await db.collection("users").doc(userId).update({
-          goalNotified: true,
+            goalNotified: true,
         });
 
         /* --------------------------------------------------
-         * 4️⃣ notifications 로그
+         * notifications 로그
          * -------------------------------------------------- */
         await db.collection("notifications").add({
-          userId,
-          goals: goal,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            userId,
+            goals: goal,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         /* --------------------------------------------------
-         * 3️⃣ 오늘 stats.goalNotified 기록 🔥🔥
+         * 오늘 stats.goalNotified 기록 
          * -------------------------------------------------- */
         const statRef = db
           .collection("stats")
@@ -85,9 +85,9 @@ export const goalAchieved = onSchedule(
 
         await statRef.set(
           {
-            isGoalAchieved: true,
-            todayTotalTime: total,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                isGoalAchieved: true,
+                todayTotalTime: total,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
           { merge: true }
         );

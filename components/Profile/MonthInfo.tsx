@@ -12,10 +12,10 @@ function MonthInfo() {
     const [month, setMonth] = useState(today.getMonth() + 1);
     const [showModal, setShowModal] = useState(false);
 
-    // 🔥 월간 데이터 저장 ( { "1": 3600, "2":0, ... } )
+    //  월간 데이터 저장 ( { "1": 3600, "2":0, ... } )
     const [monthData, setMonthData] = useState({});  
 
-    // 🔥 포맷 (HH:MM)
+    //  포맷 (HH:MM)
     const formatHM_KR = (sec) => {
     if (!sec || sec <= 0) return "0시간 0분";
     
@@ -26,7 +26,7 @@ function MonthInfo() {
     };
 
     /* ========================================================
-       🔥 월 데이터 Firestore 불러오기
+        월 데이터 Firestore 불러오기
        ======================================================== */
     useEffect(() => {
         if (!user?.uid) return;
@@ -72,24 +72,24 @@ function MonthInfo() {
     ✔ 한 달 전체 중 가장 긴 연속 공부일수
     ======================================================== */
     const calcMaxStreak = () => {
-    const days = Object.keys(monthData)
-        .map(Number)
-        .sort((a, b) => a - b); // 날짜 순 정렬
+        const days = Object.keys(monthData)
+            .map(Number)
+            .sort((a, b) => a - b); // 날짜 순 정렬
 
-    let maxStreak = 0;
-    let currentStreak = 0;
+        let maxStreak = 0;
+        let currentStreak = 0;
 
-    for (const d of days) {
-        const sec = monthData[d] ?? 0;
-        if (sec > 0) {
-        currentStreak++;
-        maxStreak = Math.max(maxStreak, currentStreak);
-        } else {
-        currentStreak = 0; // 끊김
+        for (const d of days) {
+            const sec = monthData[d] ?? 0;
+            if (sec > 0) {
+            currentStreak++;
+            maxStreak = Math.max(maxStreak, currentStreak);
+            } else {
+            currentStreak = 0; // 끊김
+            }
         }
-    }
 
-    return `${maxStreak}일`;
+        return `${maxStreak}일`;
     };
 
 
@@ -111,14 +111,16 @@ function MonthInfo() {
         if (month === 1) {
             setMonth(12);
             setYear(prev => prev - 1);
-        } else setMonth(prev => prev - 1);
+        } 
+        else setMonth(prev => prev - 1);
     };
 
     const handleNextMonth = () => {
         if (month === 12) {
             setMonth(1);
             setYear(prev => prev + 1);
-        } else setMonth(prev => prev + 1);
+        } 
+        else setMonth(prev => prev + 1);
     };
 
     const openModal = () => setShowModal(true);
@@ -150,7 +152,7 @@ function MonthInfo() {
                 </TouchableOpacity>
             </View>
 
-            {/* 🔥 실제 계산 결과 표시 */}
+            {/*  실제 계산 결과 표시 */}
             <View style={styles.listBox}>
                 <View style={styles.row}>
                     <Text style={styles.title}>월 공부 시간</Text>

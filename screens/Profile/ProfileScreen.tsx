@@ -15,10 +15,7 @@ function ProfileScreen({ navigation }) {
     const { user } = useUserContext();
     const [selectedTab, setSelectedTab] = useState('자리');
 
-    /** ⭐ seatLabel 로컬 상태 */
     const [mySeatLabel, setMySeatLabel] = useState("-");
-
-    /** seatId → seatLabel 로딩 */
     useEffect(() => {
         const loadSeatLabel = async () => {
             if (!user?.seatId) {
@@ -103,10 +100,6 @@ function ProfileScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-
-            {/* --------------------------- */}
-            {/*   🚀 header (고정) */}
-            {/* --------------------------- */}
             <View style={styles.header}>
                 <View style={styles.imageWrapper}>
                     <Image
@@ -126,10 +119,6 @@ function ProfileScreen({ navigation }) {
                     <Text style={styles.studentNumber}>{user?.student_number}</Text>
                 </View>
             </View>
-
-            {/* --------------------------- */}
-            {/*   🚀 탭 (고정) */}
-            {/* --------------------------- */}
             <View style={styles.tabContainer}>
                 {['자리', '일별', '월별'].map(tab => (
                     <TouchableOpacity
@@ -144,14 +133,8 @@ function ProfileScreen({ navigation }) {
                 ))}
             </View>
 
-            {/* --------------------------- */}
-            {/*   🚀 StateBar (고정) */}
-            {/* --------------------------- */}
             {BriefContent()}
 
-            {/* --------------------------- */}
-            {/*   🚀 아래 내용만 스크롤 */}
-            {/* --------------------------- */}
             <ScrollView 
                 style={{ flex: 1 }} 
                 contentContainerStyle={{ paddingBottom: 40 }}
@@ -164,7 +147,6 @@ function ProfileScreen({ navigation }) {
     );
 }
 
-/* CSS는 1px도 변경 없음 */
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: 'white' },
 
@@ -192,8 +174,14 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between'
     },
 
-    nickname: { fontSize: 30, fontWeight: 'bold' },
-    studentNumber: { fontSize: 20, color: '#555' },
+    nickname: { 
+        fontSize: 30, 
+        fontWeight: 'bold' 
+    },
+    studentNumber: { 
+        fontSize: 20, 
+        color: '#555' 
+    },
 
     StateBar: {
         backgroundColor: '#A2C6FC',
@@ -202,7 +190,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
     },
 
-    StateItem: { alignItems: 'center' },
+    StateItem: { 
+        alignItems: 'center' 
+    },
 
     StateBarLabel: {
         color: '#828282',
@@ -239,10 +229,16 @@ const styles = StyleSheet.create({
         borderBottomColor: '#4D8CEB'
     },
 
-    tabText: { fontSize: 16, color: '#4D8CEB' },
-    activeTabText: { fontWeight: 'bold' },
+    tabText: { 
+        fontSize: 16, 
+        color: '#4D8CEB' },
+    activeTabText: { 
+        fontWeight: 'bold' 
+    },
 
-    content: { flex: 1 }
+    content: { 
+        flex: 1 
+    }
 });
 
 export default ProfileScreen;

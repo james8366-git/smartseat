@@ -89,26 +89,3 @@ export const clearSeat = async (uid) => {
     seatLabel: "",
   });
 };
-
-/* --------------------------------------------------------
- * 7) 오늘 누적 공부시간 가져오기
- * -------------------------------------------------------- */
-// export const getTodayTotalTime = async (uid) => {
-//   const now = new Date();
-//   const yyyy = now.getFullYear();
-//   const mm = String(now.getMonth() + 1).padStart(2, "0");
-//   const dd = String(now.getDate()).padStart(2, "0");
-
-//   const todayKey = `${yyyy}-${mm}-${dd}`;
-
-//   const snap = await firestore()
-//     .collection("studylogs")
-//     .doc(uid)
-//     .collection("daily")
-//     .doc(todayKey)
-//     .get();
-
-//   if (!snap.exists) return 0;
-
-//   return snap.data()?.dailyTotalTime ?? 0;
-// };
