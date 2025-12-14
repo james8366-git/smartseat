@@ -11,7 +11,6 @@ function NowInfo() {
   const [reservedEd, setReservedEd] = useState("00:00");
 
   const [occupiedAtTS, setOccupiedAtTS] = useState<any>(null);
-  const [lastSeatedTS, setLastSeatedTS] = useState<any>(null);
 
   const [seatStatus, setSeatStatus] = useState("none");
   const [seatLabel, setSeatLabel] = useState("-");
@@ -48,7 +47,6 @@ function NowInfo() {
       setSeatStatus("none");
       setSeatLabel("-");
       setOccupiedAtTS(null);
-      setLastSeatedTS(null);
       setStartTimeText("00:00");
       setStudyTime(0);
       return;
@@ -66,11 +64,10 @@ function NowInfo() {
         setReservedEd(data.reservedEd || "00:00");
         setSeatStatus(data.status);
         setSeatLabel(data.seatLabel || "-");
-        setOccupiedAtTS(data.occupiedAt ?? null);
-        setLastSeatedTS(data.lastSeated ?? null);
+        setOccupiedAtTS(data.seatStudyStart ?? null);
 
-        if (data.occupiedAt) {
-          setStartTimeText(formatTimeHHMM(data.occupiedAt));
+        if (data.seatStudyStart) {
+          setStartTimeText(formatTimeHHMM(data.seatStudyStart));
         } else {
           setStartTimeText("00:00");
         }
@@ -114,7 +111,6 @@ function NowInfo() {
       setSeatStatus("none");
       setSeatLabel("-");
       setOccupiedAtTS(null);
-      setLastSeatedTS(null);
       setStartTimeText("00:00");
       setStudyTime(0);
 

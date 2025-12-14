@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from "react-na
 import firestore from "@react-native-firebase/firestore";
 import AdminSeatGrid from "../../components/Admin/Room/AdminSeatGrid";
 import { returnSeatTransaction } from "../../lib/seats";
+import AdminSeatModal from "../../components/Admin/Room/AdminSeatModal";
 
 function AdminRoomScreen({ route }) {
   const { roomId, roomName } = route.params;
@@ -48,9 +49,13 @@ function AdminRoomScreen({ route }) {
         statusText = "착석 중";
         elapsedText = "-";
         break;
-      case "anomaly":
+      case "object":
         statusText = "이상 압력 감지";
-        elapsedText = formatMinutesOnly(seat.anomalyAt);
+        elapsedText = formatMinutesOnly(seat.lastSeated);
+        break;
+      case "unauthorized":
+        statusText = "무단 점유 감지";
+        elapsedText = "-";
         break;
       default:
         statusText = "상태 정보 없음";
@@ -62,6 +67,14 @@ function AdminRoomScreen({ route }) {
 
   const handleReturn = async (seat) => {
     if (!seat) return;
+
+    if (!seat.uid) {
+      Alert.alert(
+        "반납 불가",
+        "사용자 정보가 없습니다."
+      );
+      return;
+    }
 
     try {
       const studentNumber = seat.student_number;
@@ -75,31 +88,18 @@ function AdminRoomScreen({ route }) {
 
         if (!snap.empty) userDoc = snap.docs[0];
       }
+      
+      const userData = userDoc.data();
 
-      if (userDoc) {
-        const userData = userDoc.data();
-
-        await returnSeatTransaction({
-          uid: userDoc.id,
-          seatId: seat.id,
-          selectedSubject: userData.selectedSubject,
-        });
-      } else {
-        await firestore().collection("seats").doc(seat.id).update({
-          status: "none",
-          reservedSt: "",
-          reservedEd: "",
-          student_number: "",
-          studylogId: "",
-          isStudying: false,
-          occupiedAt: null,
-          lastFlushedAt: null,
-          lastSeated: firestore.Timestamp.now(),
-        });
-      }
+      await returnSeatTransaction({
+        uid: userDoc.id,
+        seatId: seat.id,
+        selectedSubject: userData.selectedSubject,
+      });
 
       Alert.alert("반납 완료", `${seat.seat_number}번 좌석이 반납되었습니다.`);
       setSelectedSeat(null);
+
     } catch (e) {
       console.log("관리자 좌석 반납 오류:", e);
       Alert.alert("오류", "반납 중 문제가 발생했습니다.");
@@ -114,52 +114,35 @@ function AdminRoomScreen({ route }) {
         seats={seats}
         seatsPerRow={6}
         isAdmin={true}
-        seatColorFn={(seat) =>
-          seat.status === "none" ? "#5A8DEE" : "#FF6B6B"
-        }
+        seatColorFn={(seat) => {
+          switch (seat.status) {
+            case "none":
+              return "#CCCCCC";   // 연회색
+            case "occupied":
+              return "#E3EBFF";   // 연파랑
+            case "empty":
+            case "object":
+            case "unauthorized":
+              return "#FF6B6B";   // 빨강
+            default:
+              return "#FF6B6B";
+          }
+        }}
         onSeatPress={handleSeatPress}
       />
 
-      <Modal visible={!!selectedSeat} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>{roomName}</Text>
-            <Text style={styles.modalSeat}>
-              {selectedSeat?.seat_number}번 좌석
-            </Text>
-            <Text style={styles.modalStatusText}>
-              상태: {selectedSeat?.statusText}
-            </Text>
-            <Text style={styles.modalStatusText}>
-              경과 시간: {selectedSeat?.elapsedText}
-            </Text>
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                onPress={() => handleReturn(selectedSeat)}
-                style={[styles.modalButton, { marginRight: 10 }]}
-              >
-                <Text style={styles.modalButtonText}>반납</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setSelectedSeat(null)}
-                style={styles.modalButton}
-              >
-                <Text style={styles.modalButtonText}>닫기</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <AdminSeatModal
+        visible={!!selectedSeat}
+        seat={selectedSeat}
+        roomName={roomName}
+        onReturn={() => handleReturn(selectedSeat)}
+        onClose={() => setSelectedSeat(null)}
+      />
     </View>
   );
 }
 
 export default AdminRoomScreen;
-
-/* styles 그대로 */
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF", padding: 16 },

@@ -46,25 +46,17 @@ export const goalAchieved = onSchedule(
         console.log(`${student_number} 목표 ${goal}분 달성`);
 
         //FCM 전송
-        const res = await fcm.send({
+        await fcm.send({
             token: fcmToken,
             notification: {
                 title: "목표 달성",
-                body: `오늘의 목표 ${goal}분이 달성되었습니다!`,
-            },
-            android: {
-                notification: {
-                channelId: "default",
-                priority: "high",
-                },
+                body: `오늘의 목표 ${ goal }분이 달성되었습니다!`,
             },
             data: {
                 type: "goalAchieved",
                 userId,
             },
         });
-
-        console.log("FCM SEND RESULT", res);
 
         /* --------------------------------------------------
          * 2️⃣ users.goalnotified 갱신 🔥
@@ -93,8 +85,7 @@ export const goalAchieved = onSchedule(
 
         await statRef.set(
           {
-            goalNotified: true,
-            goalMinutes: goal,
+            isGoalAchieved: true,
             todayTotalTime: total,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },

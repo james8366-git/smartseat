@@ -33,11 +33,9 @@ function SignUpScreen({ navigation }) {
     goals: 0,
     goalNotified: false,
     seatId: '',
-    seatLabel: '',
     selectedSubject: '',
     isadmin: false,
     todayTotalTime: 0,
-    pomodoro: "",
     subject: {
       base: { name: '공부', time: 0 },
     },

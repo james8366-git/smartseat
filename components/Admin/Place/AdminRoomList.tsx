@@ -13,28 +13,45 @@ const ROOMS = [
 function AdminRoomList({ selectedTab, navigation }) {
   const [rooms, setRooms] = useState([]);
 
+  /* --------------------------------------------------
+   * 🔥 실시간 좌석 수 구독 (Admin)
+   * -------------------------------------------------- */
   useEffect(() => {
-    const fetchCounts = async () => {
-      const result = [];
+    // 🔥 초기 room 메타 세팅
+    setRooms(
+      ROOMS.map((r) => ({
+        ...r,
+        total: 0,
+        available: 0,
+        reserved: 0,
+      }))
+    );
 
-      for (const room of ROOMS) {
-        const count = await getSeatCountByRoom(room.id);
+    // 🔥 방별 실시간 구독
+    const unsubscribes = ROOMS.map((room) =>
+      getSeatCountByRoom(room.id, (count) => {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === room.id
+              ? {
+                  ...r,
+                  total: count.total,
+                  available: count.available,
+                  reserved: count.reserved,
+                }
+              : r
+          )
+        );
+      })
+    );
 
-        result.push({
-          ...room,
-          total: count.total,
-          available: count.available,
-          reserved: count.reserved,
-        });
-      }
-
-      setRooms(result);
+    // 🔥 cleanup
+    return () => {
+      unsubscribes.forEach((unsub) => unsub && unsub());
     };
-
-    fetchCounts();
   }, []);
 
-  const filteredRooms = rooms.filter(room => room.type === selectedTab);
+  const filteredRooms = rooms.filter((room) => room.type === selectedTab);
 
   return (
     <FlatList
@@ -66,8 +83,8 @@ function AdminRoomList({ selectedTab, navigation }) {
               style={{
                 width: size,
                 height: size,
-                alignItems: "center",
-                justifyContent: "center",
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               <Svg width={size} height={size}>
@@ -79,7 +96,6 @@ function AdminRoomList({ selectedTab, navigation }) {
                   strokeWidth={stroke}
                   fill="none"
                 />
-
                 <Circle
                   cx={size / 2}
                   cy={size / 2}

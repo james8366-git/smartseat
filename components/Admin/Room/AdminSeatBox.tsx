@@ -1,14 +1,11 @@
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 
-export default function AdminSeatBox({ seatNumber, status, onPress }) {
-  // 🔥 관리자 색상 정책
-  const backgroundColor =
-    status === "none" ? "#5A8DEE" : "#FF6B6B";
+export default function AdminSeatBox({ seatNumber, adminColor, onPress }) {
 
   return (
     <TouchableOpacity
-      style={[styles.seat, { backgroundColor }]}
+      style={[styles.seat, { backgroundColor: adminColor }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -28,6 +25,6 @@ const styles = StyleSheet.create({
   },
   seatText: {
     fontSize: 14,
-    color: "#fff",
+    color: "#000",
   },
 });

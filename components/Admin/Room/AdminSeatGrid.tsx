@@ -6,6 +6,7 @@ export default function AdminSeatGrid({
   seats,
   seatsPerRow,
   onSeatPress,
+  seatColorFn,
 }) {
   const seatRows = [];
   for (let i = 0; i < seats.length; i += seatsPerRow) {
@@ -21,6 +22,9 @@ export default function AdminSeatGrid({
               key={seat.id}
               seatNumber={seat.seat_number}
               status={seat.status}
+              adminColor={
+                seatColorFn ? seatColorFn(seat) : "#CCCCCC"
+              }
               onPress={() => {
                 console.log("Pressed Seat:", seat);
                 onSeatPress(seat);

@@ -14,7 +14,7 @@ type SeatStatus =
 export const syncSensorToSeat = onValueWritten(
   {
     ref: "sensors/{seatId}/status",
-    region: "asia-northeast3",
+    region: "asia-southeast1",
   },
   async (event) => {
     const seatId = event.params.seatId;

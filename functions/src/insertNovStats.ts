@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { goalAchieved } from "./ranking/goalAchieved";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -28,7 +29,7 @@ export const insertNovStats = functions.https.onRequest(
          * 🔥 변경 핵심 로직
          * =============================== */
         const goalMinutes = 360;
-        const goalNotified = day >= 12; // ⭐ 12일부터 true
+        const isGoalAchieved = day >= 12; // ⭐ 12일부터 true
 
         await db
           .collection("stats")
@@ -47,15 +48,12 @@ export const insertNovStats = functions.https.onRequest(
 
               /* 🔥 추가/고정 필드 */
               goalMinutes,
-              goalNotified,
+              isGoalAchieved,
+
+              goalNotified: admin.firestore.FieldValue.delete(),
             },
             { merge: true }
           );
-
-        console.log("Created", dateId, {
-          goalMinutes,
-          goalNotified,
-        });
       }
 
       res.send("Inserted November stats with goalMinutes=360, goalNotified split.");

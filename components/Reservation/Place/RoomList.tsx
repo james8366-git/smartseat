@@ -1,3 +1,5 @@
+// components/Reservation/Place/RoomList.tsx
+
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { getSeatCountByRoom } from '../../../lib/seats';
@@ -13,38 +15,47 @@ const ROOMS = [
 function RoomList({ selectedTab, navigation }) {
   const [rooms, setRooms] = useState([]);
 
+  /* --------------------------------------------------
+   * 🔥 실시간 좌석 수 구독
+   * -------------------------------------------------- */
   useEffect(() => {
-    const fetchCounts = async () => {
-      const result = [];
+    // 초기 room 메타 세팅
+    setRooms(ROOMS.map((r) => ({ ...r, total: 0, available: 0, reserved: 0 })));
 
-      for (const room of ROOMS) {
-        const count = await getSeatCountByRoom(room.id);
+    // 🔥 각 방별 실시간 구독
+    const unsubscribes = ROOMS.map((room) =>
+      getSeatCountByRoom(room.id, (count) => {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === room.id
+              ? {
+                  ...r,
+                  total: count.total,
+                  available: count.available,
+                  reserved: count.reserved,
+                }
+              : r
+          )
+        );
+      })
+    );
 
-        // count = { total, available, reserved }
-        result.push({
-          ...room,
-          total: count.total,
-          available: count.available,
-          reserved: count.reserved,
-        });
-      }
-
-      setRooms(result);
+    // 🔥 cleanup
+    return () => {
+      unsubscribes.forEach((unsub) => unsub && unsub());
     };
-    fetchCounts();
   }, []);
 
-  const filteredRooms = rooms.filter(room => room.type === selectedTab);
+  const filteredRooms = rooms.filter((room) => room.type === selectedTab);
 
   return (
     <FlatList
       data={filteredRooms}
       numColumns={2}
       keyExtractor={(item) => item.id}
-      columnWrapperStyle={{ 
+      columnWrapperStyle={{
         justifyContent: 'space-between',
-
-       }}
+      }}
       renderItem={({ item }) => {
         const total = item.total ?? 0;
         const available = item.available ?? 0;
@@ -52,12 +63,12 @@ function RoomList({ selectedTab, navigation }) {
 
         const size = 120;
         const stroke = 6;
-        const radius = (size - stroke) / 2; // 57
+        const radius = (size - stroke) / 2;
         const circumference = 2 * Math.PI * radius;
 
         return (
           <TouchableOpacity
-            style={ [styles.roomButton, {width: '50%'}]}
+            style={[styles.roomButton, { width: '50%' }]}
             onPress={() =>
               navigation.navigate('Room', {
                 roomName: item.name,
@@ -65,10 +76,15 @@ function RoomList({ selectedTab, navigation }) {
               })
             }
           >
-            {/* 원형 Progress Border */}
-            <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+            <View
+              style={{
+                width: size,
+                height: size,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <Svg width={size} height={size}>
-                {/* 회색 전체 border */}
                 <Circle
                   cx={size / 2}
                   cy={size / 2}
@@ -77,8 +93,6 @@ function RoomList({ selectedTab, navigation }) {
                   strokeWidth={stroke}
                   fill="none"
                 />
-
-                {/* available 비율만큼 파란색 border */}
                 <Circle
                   cx={size / 2}
                   cy={size / 2}
@@ -94,7 +108,6 @@ function RoomList({ selectedTab, navigation }) {
                 />
               </Svg>
 
-              {/* 중앙 텍스트 */}
               <View style={styles.centerTextWrapper}>
                 <Text style={styles.circleText}>
                   {available} / {total}
@@ -115,19 +128,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 20,
   },
-
   centerTextWrapper: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   circleText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
   },
-
   roomName: {
     marginTop: 8,
     fontSize: 14,

@@ -36,6 +36,7 @@ export const syncStatsDaily = onDocumentUpdated(
         dailyTotalTime: 0,
         subjects: {},
         firstStudyAt: null,
+        goalNotified : false,
       });
     }
 

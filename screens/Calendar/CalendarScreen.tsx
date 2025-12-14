@@ -22,23 +22,26 @@ function Calendar() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  const [monthStats, setMonthStats] = useState({});
-  const [dailyDetail, setDailyDetail] = useState(null);
+  const [monthStats, setMonthStats] = useState<Record<string, number>>({});
+  const [dailyDetail, setDailyDetail] = useState<any>(null);
 
   const [goalAchievedDays, setGoalAchievedDays] = useState(0);
+  const [subjectMap, setSubjectMap] = useState<Record<string, any>>({});
 
-  const [subjectMap, setSubjectMap] = useState({});
+  const [dailyUnsub, setDailyUnsub] = useState<null | (() => void)>(null);
 
-  const safeDaily = (data) => ({
+  const safeDaily = (data: any) => ({
     dailyTotalTime: data?.dailyTotalTime ?? 0,
     subjects: data?.subjects ?? {},
     firstStudyAt: data?.firstStudyAt ?? null,
+    goalMinutes: data?.goalMinutes ?? 0,
+    isGoalAchieved: data?.isGoalAchieved ?? false,
   });
 
-  // 오늘 값 실시간 반영
+  /* ---------------- 오늘 값 실시간 ---------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -49,12 +52,13 @@ function Calendar() {
         if (!snap.exists) return;
         const data = snap.data();
 
-      const now = new Date();
-      const nowYear = now.getFullYear();
-      const nowMonth = now.getMonth() + 1;
+        const now = new Date();
+        if (
+          year !== now.getFullYear() ||
+          month !== now.getMonth() + 1
+        )
+          return;
 
-      // ⭐ 보고 있는 달이 '이번 달'일 때만 반영
-      if (year !== nowYear || month !== nowMonth) return;
         const dd = String(today.getDate());
         setMonthStats((prev) => ({
           ...prev,
@@ -63,9 +67,9 @@ function Calendar() {
       });
 
     return () => unsub();
-  }, [user?.uid]);
+  }, [user?.uid, year, month]);
 
-  // 과목 uuid → name map
+  /* ---------------- 과목 map ---------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -80,47 +84,44 @@ function Calendar() {
     return () => unsub();
   }, [user?.uid]);
 
+  /* ---------------- 월 단위 실시간 ---------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
-    const fetchMonth = async () => {
-      const mm = String(month).padStart(2, "0");
-      const yyyy = year;
+    const mm = String(month).padStart(2, "0");
+    const yyyy = year;
 
-      const firstDate = `${yyyy}-${mm}-01`;
-      const lastDate = `${yyyy}-${mm}-31`;
+    const firstDate = `${yyyy}-${mm}-01`;
+    const lastDate = `${yyyy}-${mm}-31`;
 
-      const snap = await firestore()
-        .collection("stats")
-        .doc(user.uid)
-        .collection("daily")
-        .where(firestore.FieldPath.documentId(), ">=", firstDate)
-        .where(firestore.FieldPath.documentId(), "<=", lastDate)
-        .get();
+    const unsub = firestore()
+      .collection("stats")
+      .doc(user.uid)
+      .collection("daily")
+      .where(firestore.FieldPath.documentId(), ">=", firstDate)
+      .where(firestore.FieldPath.documentId(), "<=", lastDate)
+      .onSnapshot((snap) => {
+        const data: Record<string, number> = {};
+        let achieved = 0;
 
-      const data: any = {};
-      let achievedCount = 0;   // ⭐ 추가
-      snap.forEach((doc) => {
-        const parts = doc.id.split("-");
-        const day = String(parseInt(parts[2]));
+        snap.forEach((doc) => {
+          const parts = doc.id.split("-");
+          const day = String(parseInt(parts[2], 10));
+          const daily = doc.data();
 
-        const daily = doc.data();
-        data[day] = daily.dailyTotalTime ?? 0;
+          data[day] = daily.dailyTotalTime ?? 0;
+          if (daily?.isGoalAchieved === true) achieved += 1;
+        });
 
-        // ⭐ goalNotified 카운트 (없으면 false 취급)
-      if (daily?.goalNotified === true) {
-        achievedCount += 1;
-      }
+        setMonthStats(data);
+        setGoalAchievedDays(achieved);
       });
 
-      setMonthStats(data);
-      setGoalAchievedDays(achievedCount);   // ⭐ 추가
-    };
-
-    fetchMonth();
+    return () => unsub();
   }, [user?.uid, year, month]);
 
-  const handlePressDate = async (day) => {
+  /* ---------------- 날짜 클릭 ---------------- */
+  const handlePressDate = (day: number) => {
     setSelectedDate(day);
     setShowModal(true);
 
@@ -128,28 +129,36 @@ function Calendar() {
     const mm = String(month).padStart(2, "0");
     const dd = String(day).padStart(2, "0");
 
-    const doc = await firestore()
+    if (dailyUnsub) {
+      dailyUnsub();
+      setDailyUnsub(null);
+    }
+
+    const unsub = firestore()
       .collection("stats")
       .doc(user.uid)
       .collection("daily")
       .doc(`${yyyy}-${mm}-${dd}`)
-      .get();
+      .onSnapshot((snap) => {
+        setDailyDetail(
+          safeDaily(snap.exists ? snap.data() : null)
+        );
+      });
 
-    setDailyDetail(safeDaily(doc.exists ? doc.data() : null));
+    setDailyUnsub(() => unsub);
   };
 
-    const convertSubjects = (map) => {
+  const convertSubjects = (map: any) => {
     if (!map || !subjectMap) return [];
-
     return Object.entries(map)
-        .filter(([uuid]) => !!subjectMap[uuid]) // ⭐ 존재하는 과목만
-        .map(([uuid, sec]) => ({
+      .filter(([uuid]) => !!subjectMap[uuid])
+      .map(([uuid, sec]: any) => ({
         name: subjectMap[uuid].name,
         sec,
-        }));
-    };
+      }));
+  };
 
-  const getColorByTime = (time) => {
+  const getColorByTime = (time: number) => {
     if (time >= 600 * 60) return "#72A6F3";
     if (time >= 420 * 60) return "#A2C6FC";
     if (time >= 240 * 60) return "#D3E3FF";
@@ -157,51 +166,39 @@ function Calendar() {
     return "transparent";
   };
 
-  const formatHM = (sec) => {
+  const formatHM = (sec: number) => {
     if (!sec || sec <= 0) return "00:00";
     const m = Math.floor(sec / 60);
-    const hh = String(Math.floor(m / 60)).padStart(2, "0");
-    const mm = String(m % 60).padStart(2, "0");
-    return `${hh}:${mm}`;
+    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(
+      m % 60
+    ).padStart(2, "0")}`;
   };
 
-  const formatHMS = (sec) => {
+  const formatHMS = (sec: number) => {
     if (!sec || sec <= 0) return "00:00:00";
-    const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
-    const s = String(sec % 60).padStart(2, "0");
-    return `${h}:${m}:${s}`;
+    return `${String(Math.floor(sec / 3600)).padStart(2, "0")}:${String(
+      Math.floor((sec % 3600) / 60)
+    ).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
   };
 
-    const calcMonthlyAverage = () => {
-    const values = Object.values(monthStats)
-        .filter((sec) => sec > 0); // 0보다 큰 day만 채택
-
+  const calcMonthlyAverage = () => {
+    const values = Object.values(monthStats).filter((sec) => sec > 0);
     if (values.length === 0) return "00:00";
-
     const sum = values.reduce((a, b) => a + b, 0);
-    const avg = Math.floor(sum / values.length);
-
-    return formatHM(avg);
-    };
-
+    return formatHM(Math.floor(sum / values.length));
+  };
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay();
 
-  const cells = [];
+  const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }} edges={["top"]}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 60 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* wrapper로 alignItems 무효화 */}
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         <View style={{ width: "100%", alignItems: "center" }}>
-
           <View style={styles.container}>
             <Text style={styles.yearText}>{year}</Text>
 
@@ -264,12 +261,22 @@ function Calendar() {
               {cells.map((day, idx) => {
                 const time = monthStats[String(day)] ?? 0;
 
+                const isToday =
+                  day &&
+                  year === today.getFullYear() &&
+                  month === today.getMonth() + 1 &&
+                  day === today.getDate();
+
                 return (
                   <TouchableOpacity
                     key={idx}
                     style={[
                       styles.dayCell,
                       { backgroundColor: getColorByTime(time) },
+                      isToday && {
+                        borderWidth: 2,
+                        borderColor: "#333",
+                      },
                     ]}
                     disabled={!day}
                     onPress={() => day && handlePressDate(day)}
@@ -289,7 +296,6 @@ function Calendar() {
               })}
             </View>
           </View>
-
         </View>
       </ScrollView>
 
@@ -303,7 +309,9 @@ function Calendar() {
 
               {dailyDetail && (
                 <ScrollView style={{ width: "100%" }}>
-                  <Text>총 공부시간: {formatHMS(dailyDetail.dailyTotalTime)}</Text>
+                  <Text>
+                    총 공부시간: {formatHMS(dailyDetail.dailyTotalTime)}
+                  </Text>
 
                   <Text style={{ marginTop: 10, fontWeight: "600" }}>
                     과목별 공부시간
@@ -322,20 +330,47 @@ function Calendar() {
                     <Text>
                       {(() => {
                         const d = dailyDetail.firstStudyAt.toDate();
-                        const hh = String(d.getHours()).padStart(2, "0");
-                        const mm = String(d.getMinutes()).padStart(2, "0");
-                        return `${hh}:${mm}`;
+                        return `${String(d.getHours()).padStart(
+                          2,
+                          "0"
+                        )}:${String(d.getMinutes()).padStart(2, "0")}`;
                       })()}
                     </Text>
                   ) : (
                     <Text>없음</Text>
+                  )}
+
+                  <Text style={{ marginTop: 10, fontWeight: "600" }}>
+                    일일 목표
+                  </Text>
+
+                  {dailyDetail.goalMinutes ? (
+                    <>
+                      <Text>
+                        목표 시간:{" "}
+                        {Math.floor(dailyDetail.goalMinutes / 60)}시간{" "}
+                        {dailyDetail.goalMinutes % 60}분
+                      </Text>
+                      <Text>
+                        달성 여부:{" "}
+                        {dailyDetail.isGoalAchieved ? "✅ 달성" : "❌ 미달성"}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text>목표 시간: 설정 안됨</Text>
                   )}
                 </ScrollView>
               )}
 
               <Pressable
                 style={styles.closeButton}
-                onPress={() => setShowModal(false)}
+                onPress={() => {
+                  if (dailyUnsub) {
+                    dailyUnsub();
+                    setDailyUnsub(null);
+                  }
+                  setShowModal(false);
+                }}
               >
                 <Text style={styles.closeText}>닫기</Text>
               </Pressable>
@@ -374,7 +409,7 @@ const styles = StyleSheet.create({
   summaryBox: {
     flexDirection: "row",
     justifyContent: "space-around",
-    alignSelf: 'center',
+    alignSelf: "center",
     width: "100%",
     marginBottom: 10,
   },
